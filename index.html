@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>New Orleans Street Racer - WebGL Prototype</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #05050a;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: #00ffcc;
+            text-shadow: 0 0 10px rgba(0, 255, 204, 0.7);
+            pointer-events: none;
+        }
+        h1 { margin: 0 0 5px 0; font-size: 24px; letter-spacing: 2px; }
+        p { margin: 0; color: #ff007f; font-weight: bold; font-size: 16px; text-shadow: 0 0 8px rgba(255, 0, 127, 0.7); }
+        #controls-hint {
+            position: absolute;
+            bottom: 20px;
+            width: 100%;
+            text-align: center;
+            color: #aaa;
+            font-size: 14px;
+            pointer-events: none;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+        }
+    </style>
+</head>
+<body>
+    <div id="ui">
+        <h1>LEVEL 29 ENT: NOLA DRIFT</h1>
+        <p id="speedometer">SPEED: 0 MPH</p>
+    </div>
+    <div id="controls-hint">Use <b>W / A / S / D</b> or <b>Arrow Keys</b> to Drive & Steer | <b>SPACE</b> to Drift</div>
+
+    <!-- Include Three.js via CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // --- SCENE, CAMERA, RENDERER SETUP ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x020208);
+        scene.fog = new THREE.FogExp2(0x020208, 0.015);
+
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.shadowMap.enabled = true;
+        document.body.appendChild(renderer.domElement);
+
+        // --- LIGHTING ---
+        const ambientLight = new THREE.AmbientLight(0x111122, 1.5);
+        scene.add(ambientLight);
+
+        const dirLight = new THREE.DirectionalLight(0xff007f, 2);
+        dirLight.position.set(20, 40, 20);
+        scene.add(dirLight);
+
+        // Add glowing neon street lights along the track
+        for (let i = -200; i <= 200; i += 40) {
+            const lightColor = i % 80 === 0 ? 0x00ffff : 0xff007f;
+            const poleGeo = new THREE.CylinderGeometry(0.2, 0.2, 12);
+            const poleMat = new THREE.MeshStandardMaterial({ color: 0x222222 });
+            const pole = new THREE.Mesh(poleGeo, poleMat);
+            pole.position.set(12, 6, i);
+            scene.add(pole);
+
+            const bulbLight = new THREE.PointLight(lightColor, 3, 30);
+            bulbLight.position.set(12, 11, i);
+            scene.add(bulbLight);
+        }
+
+        // --- ENVIRONMENT (NOLA Highway / City Grid) ---
+        // Asphalt Road
+        const roadGeo = new THREE.PlaneGeometry(24, 600);
+        const roadMat = new THREE.MeshStandardMaterial({ color: 0x111115, roughness: 0.8 });
+        const road = new THREE.Mesh(roadGeo, roadMat);
+        road.rotation.x = -Math.PI / 2;
+        road.position.set(0, 0, 0);
+        scene.add(road);
+
+        // Glowing center dividing stripes
+        for (let i = -280; i <= 280; i += 10) {
+            const stripeGeo = new THREE.PlaneGeometry(0.4, 5);
+            const stripeMat = new THREE.MeshBasicMaterial({ color: 0x00ffcc });
+            const stripe = new THREE.Mesh(stripeGeo, stripeMat);
+            stripe.rotation.x = -Math.PI / 2;
+            stripe.position.set(0, 0.02, i);
+            scene.add(stripe);
+        }
+
+        // Sidewalks & Neon Skyline Buildings
+        const buildingMat = new THREE.MeshStandardMaterial({ color: 0x0a0a12, roughness: 0.5 });
+        for (let i = -250; i <= 250; i += 30) {
+            // Left side buildings
+            const heightL = 20 + Math.random() * 40;
+            const bldL = new THREE.Mesh(new THREE.BoxGeometry(15, heightL, 20), buildingMat);
+            bldL.position.set(-25, heightL / 2, i);
+            scene.add(bldL);
+
+            // Right side buildings
+            const heightR = 20 + Math.random() * 40;
+            const bldR = new THREE.Mesh(new THREE.BoxGeometry(15, heightR, 20), buildingMat);
+            bldR.position.set(25, heightR / 2, i);
+            scene.add(bldR);
+        }
+
+        // --- PLAYER VEHICLE (Low-Poly Custom Muscle Coupe) ---
+        const carGroup = new THREE.Group();
+
+        // Main Body Chassis
+        const bodyGeo = new THREE.BoxGeometry(2.2, 0.8, 4.8);
+        const bodyMat = new THREE.MeshStandardMaterial({ color: 0x8800ff, roughness: 0.2, metalness: 0.8 });
+        const body = new THREE.Mesh(bodyGeo, bodyMat);
+        body.position.y = 0.6;
+        carGroup.add(body);
+
+        // Cabin Top
+        const cabinGeo = new THREE.BoxGeometry(1.8, 0.6, 2.4);
+        const cabinMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.1, metalness: 0.9 });
+        const cabin = new THREE.Mesh(cabinGeo, cabinMat);
+        cabin.position.set(0, 1.2, -0.2);
+        carGroup.add(cabin);
+
+        // Wheels
+        const wheelGeo = new THREE.CylinderGeometry(0.4, 0.4, 0.4, 16);
+        wheelGeo.rotateZ(Math.PI / 2);
+        const wheelMat = new THREE.MeshStandardMaterial({ color: 0x111111 });
+        
+        const wheels = [];
+        const wheelPositions = [
+            [-1.2, 0.4, 1.5], [1.2, 0.4, 1.5],
+            [-1.2, 0.4, -1.5], [1.2, 0.4, -1.5]
+        ];
+        wheelPositions.forEach(pos => {
+            const wheel = new THREE.Mesh(wheelGeo, wheelMat);
+            wheel.position.set(...pos);
+            carGroup.add(wheel);
+            wheels.push(wheel);
+        });
+
+        scene.add(carGroup);
+        carGroup.position.set(0, 0, 100);
+
+        // --- GAME CONTROLS & PHYSICS STATE ---
+        const keys = { forward: false, backward: false, left: false, right: false, drift: false };
+        window.addEventListener('keydown', (e) => updateKeys(e, true));
+        window.addEventListener('keyup', (e) => updateKeys(e, false));
+
+        function updateKeys(e, isDown) {
+            switch(e.key.toLowerCase()) {
+                case 'w': case 'arrowup': keys.forward = isDown; break;
+                case 's': case 'arrowdown': keys.backward = isDown; break;
+                case 'a': case 'arrowleft': keys.left = isDown; break;
+                case 'd': case 'arrowright': keys.right = isDown; break;
+                case ' ': keys.drift = isDown; break;
+            }
+        }
+
+        let speed = 0;
+        let maxSpeed = 1.2;
+        let acceleration = 0.015;
+        let deceleration = 0.01;
+        let turnSpeed = 0.035;
+        let carAngle = 0;
+
+        // --- GAME LOOP ---
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Acceleration & Braking physics
+            if (keys.forward) {
+                speed = Math.min(speed + acceleration, maxSpeed);
+            } else if (keys.backward) {
+                speed = Math.max(speed - acceleration, -maxSpeed / 3);
+            } else {
+                if (speed > 0) speed = Math.max(speed - deceleration, 0);
+                if (speed < 0) speed = Math.min(speed + deceleration, 0);
+            }
+
+            // Steering dynamics
+            let currentTurn = turnSpeed;
+            if (keys.drift) currentTurn *= 1.5; // Drift multiplier
+
+            if (Math.abs(speed) > 0.05) {
+                if (keys.left) {
+                    carAngle += currentTurn * Math.sign(speed);
+                    carGroup.rotation.y = carAngle;
+                }
+                if (keys.right) {
+                    carAngle -= currentTurn * Math.sign(speed);
+                    carGroup.rotation.y = carAngle;
+                }
+            }
+
+            // Move car forward along its facing angle
+            carGroup.position.x += Math.sin(carAngle) * speed;
+            carGroup.position.z += Math.cos(carAngle) * speed;
+
+            // Loop track infinitely for endless driving experience
+            if (carGroup.position.z < -250) carGroup.position.z = 250;
+            if (carGroup.position.z > 250) carGroup.position.z = -250;
+
+            // Boundaries to keep car on highway
+            carGroup.position.x = Math.max(Math.min(carGroup.position.x, 10), -10);
+
+            // Smooth chase camera setup
+            const targetCameraX = carGroup.position.x - Math.sin(carAngle) * 12;
+            const targetCameraZ = carGroup.position.z - Math.cos(carAngle) * 12;
+            camera.position.x += (targetCameraX - camera.position.x) * 0.1;
+            camera.position.z += (targetCameraZ - camera.position.z) * 0.1;
+            camera.position.y = carGroup.position.y + 5;
+            camera.lookAt(carGroup.position.x, carGroup.position.y + 1, carGroup.position.z - 5);
+
+            // Update HUD Speedometer
+            document.getElementById('speedometer').innerText = `SPEED: ${Math.round(Math.abs(speed) * 120)} MPH`;
+
+            renderer.render(scene, camera);
+        }
+
+        animate();
+
+        // Responsive window resizing
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
