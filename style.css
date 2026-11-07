@@ -1,7 +1,7 @@
 body {
     margin: 0;
     overflow: hidden;
-    background-color: #010104;
+    background-color: #020205;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     user-select: none;
 }
@@ -12,27 +12,28 @@ body {
     color: #00ffcc;
     text-shadow: 0 0 10px rgba(0, 255, 204, 0.7);
     pointer-events: none;
+    z-index: 10;
 }
-h1 { margin: 0 0 5px 0; font-size: 24px; letter-spacing: 2px; }
-p { margin: 0; color: #ff007f; font-weight: bold; font-size: 16px; text-shadow: 0 0 8px rgba(255, 0, 127, 0.7); }
+h1 { margin: 0 0 5px 0; font-size: 22px; letter-spacing: 2px; }
+p { margin: 0; color: #ff007f; font-weight: bold; font-size: 15px; text-shadow: 0 0 8px rgba(255, 0, 127, 0.7); }
 
 .hud-panel {
     position: absolute;
-    background: rgba(10, 10, 20, 0.92);
+    background: rgba(10, 10, 25, 0.96);
     border: 2px solid #00ffcc;
-    box-shadow: 0 0 20px rgba(0, 255, 204, 0.4);
-    border-radius: 8px;
+    box-shadow: 0 0 25px rgba(0, 255, 204, 0.5);
+    border-radius: 10px;
     color: white;
-    padding: 20px;
+    padding: 25px;
     display: none;
     z-index: 100;
 }
-#dealership-modal, #garage-modal {
+#dealership-modal, #territory-modal, #garage-modal, #interior-modal, #smartphone-modal {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: 750px;
-    max-height: 80vh;
+    width: 780px;
+    max-height: 82vh;
     overflow-y: auto;
 }
 .modal-header {
@@ -40,35 +41,36 @@ p { margin: 0; color: #ff007f; font-weight: bold; font-size: 16px; text-shadow: 
     justify-content: space-between;
     align-items: center;
     border-bottom: 1px solid #333;
-    padding-bottom: 10px;
-    margin-bottom: 15px;
+    padding-bottom: 12px;
+    margin-bottom: 18px;
 }
-.car-grid {
+.car-grid, .territory-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
+    gap: 15px;
 }
-.car-card {
-    background: rgba(20, 20, 35, 0.95);
+.car-card, .territory-card {
+    background: rgba(20, 20, 40, 0.95);
     border: 1px solid #ff007f;
-    padding: 12px;
-    border-radius: 6px;
+    padding: 15px;
+    border-radius: 8px;
     text-align: center;
+    box-shadow: 0 0 10px rgba(255, 0, 127, 0.2);
 }
-.car-card h3 { margin: 0 0 5px 0; color: #00ffcc; font-size: 16px; }
-.car-card p { font-size: 13px; color: #bbb; margin-bottom: 8px; }
+.car-card h3, .territory-card h3 { margin: 0 0 6px 0; color: #00ffcc; font-size: 17px; }
+.car-card p, .territory-card p { font-size: 13px; color: #ccc; margin-bottom: 10px; }
 .btn {
     background: #ff007f;
     color: white;
     border: none;
-    padding: 8px 14px;
+    padding: 9px 16px;
     font-weight: bold;
-    border-radius: 4px;
+    border-radius: 5px;
     cursor: pointer;
-    box-shadow: 0 0 10px rgba(255, 0, 127, 0.8);
+    box-shadow: 0 0 12px rgba(255, 0, 127, 0.8);
     transition: 0.2s;
 }
-.btn:hover { background: #ff3399; box-shadow: 0 0 15px rgba(255, 51, 153, 1); }
+.btn:hover { background: #ff3399; box-shadow: 0 0 18px rgba(255, 51, 153, 1); }
 
 #menu-bar {
     position: absolute;
@@ -76,18 +78,19 @@ p { margin: 0; color: #ff007f; font-weight: bold; font-size: 16px; text-shadow: 
     width: 100%;
     text-align: center;
     pointer-events: auto;
+    z-index: 10;
 }
 .menu-btn {
-    background: rgba(10, 10, 20, 0.9);
+    background: rgba(10, 10, 25, 0.92);
     border: 2px solid #00ffcc;
     color: #00ffcc;
-    padding: 10px 20px;
-    font-size: 16px;
+    padding: 10px 18px;
+    font-size: 15px;
     font-weight: bold;
-    margin: 0 10px;
+    margin: 0 6px;
     border-radius: 6px;
     cursor: pointer;
-    box-shadow: 0 0 12px rgba(0, 255, 204, 0.5);
+    box-shadow: 0 0 12px rgba(0, 255, 204, 0.4);
 }
 .menu-btn:hover { background: #00ffcc; color: #000; }
 #controls-hint {
@@ -95,8 +98,9 @@ p { margin: 0; color: #ff007f; font-weight: bold; font-size: 16px; text-shadow: 
     bottom: 85px;
     width: 100%;
     text-align: center;
-    color: #ccc;
+    color: #ddd;
     font-size: 14px;
     pointer-events: none;
-    text-shadow: 0 2px 4px rgba(0,0,0,0.9);
+    text-shadow: 0 2px 5px rgba(0,0,0,0.9);
+    z-index: 10;
 }
