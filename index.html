@@ -232,4 +232,307 @@
             initThree() {
                 this.scene = new THREE.Scene();
                 this.scene.background = new THREE.Color(0x020208);
-                this.scene
+                this.scene.fog = new THREE.FogExp2(0x020208, 0.005);
+
+                this.camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 1500);
+                this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+                this.renderer.shadowMap.enabled = true;
+                this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+                document.body.appendChild(this.renderer.domElement);
+
+                // AAA Lighting
+                const ambientLight = new THREE.AmbientLight(0x222244, 2.2);
+                this.scene.add(ambientLight);
+
+                const overheadLight = new THREE.DirectionalLight(0x4477ff, 2.5);
+                overheadLight.position.set(40, 80, 40);
+                overheadLight.castShadow = true;
+                this.scene.add(overheadLight);
+
+                // NOLA Neon Streetlights & NPCs
+                for (let i = -700; i <= 700; i += 45) {
+                    const color = i % 90 === 0 ? 0x00ffff : 0xff007f;
+                    const pole = new THREE.Mesh(
+                        new THREE.CylinderGeometry(0.15, 0.2, 14, 8),
+                        new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.3, metalness: 0.8 })
+                    );
+                    pole.position.set(12, 7, i);
+                    this.scene.add(pole);
+
+                    const bulbLight = new THREE.PointLight(color, 4.5, 35);
+                    bulbLight.position.set(12, 13, i);
+                    this.scene.add(bulbLight);
+                }
+
+                // Realistic PBR Asphalt Road
+                const roadMat = new THREE.MeshStandardMaterial({ 
+                    color: 0x14141a, 
+                    roughness: 0.35, 
+                    metalness: 0.1 
+                });
+                const road = new THREE.Mesh(new THREE.PlaneGeometry(24, 1600), roadMat);
+                road.rotation.x = -Math.PI / 2;
+                road.receiveShadow = true;
+                this.scene.add(road);
+
+                // Center Glowing Stripes
+                for (let i = -750; i <= 750; i += 12) {
+                    const stripe = new THREE.Mesh(
+                        new THREE.PlaneGeometry(0.4, 5),
+                        new THREE.MeshBasicMaterial({ color: 0x00ffcc })
+                    );
+                    stripe.rotation.x = -Math.PI / 2;
+                    stripe.position.set(0, 0.03, i);
+                    this.scene.add(stripe);
+                }
+
+                // Realistic Brick & Concrete Buildings with Glowing Windows
+                const brickMat = new THREE.MeshStandardMaterial({ color: 0x2b1d1a, roughness: 0.8, metalness: 0.1 });
+                const concreteMat = new THREE.MeshStandardMaterial({ color: 0x1f1f26, roughness: 0.6, metalness: 0.3 });
+                const windowGlow = new THREE.MeshBasicMaterial({ color: 0xffbb44 });
+
+                for (let i = -700; i <= 700; i += 32) {
+                    [-20, 20].forEach((xPos, idx) => {
+                        const mat = idx === 0 ? brickMat : concreteMat;
+                        const h = 35 + Math.random() * 50;
+                        const bld = new THREE.Mesh(new THREE.BoxGeometry(16, h, 26), mat);
+                        bld.position.set(xPos, h / 2, i);
+                        bld.castShadow = true;
+                        bld.receiveShadow = true;
+                        this.scene.add(bld);
+
+                        // Storefront Windows
+                        const win = new THREE.Mesh(new THREE.PlaneGeometry(8, h * 0.6), windowGlow);
+                        win.position.set(xPos > 0 ? xPos - 8.01 : xPos + 8.01, h / 2, i);
+                        win.rotation.y = xPos > 0 ? -Math.PI / 2 : Math.PI / 2;
+                        this.scene.add(win);
+                    });
+                }
+
+                // --- NPCs: Spawn parked street racer cars along the sidewalks ---
+                this.npcs = [];
+                const npcColors = [0xff0055, 0x00ffcc, 0xffaa00, 0x0055ff, 0x00ff00];
+                for (let i = -600; i <= 600; i += 80) {
+                    const xSide = i % 160 === 0 ? 9 : -9;
+                    const npcGroup = new THREE.Group();
+                    const npcBody = new THREE.Mesh(
+                        new THREE.BoxGeometry(2.0, 0.65, 4.4),
+                        new THREE.MeshStandardMaterial({ color: npcColors[Math.abs(i) % npcColors.length], roughness: 0.2, metalness: 0.8 })
+                    );
+                    npcBody.position.y = 0.6;
+                    npcBody.castShadow = true;
+                    npcGroup.add(npcBody);
+                    npcGroup.position.set(xSide, 0, i);
+                    this.scene.add(npcGroup);
+                    this.npcs.push(npcGroup);
+                }
+
+                // Player Car
+                this.carGroup = new THREE.Group();
+                this.bodyMat = new THREE.MeshStandardMaterial({ color: 0x8800ff, roughness: 0.15, metalness: 0.85 });
+                this.carBodyMesh = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.65, 4.4), this.bodyMat);
+                this.carBodyMesh.position.y = 0.6;
+                this.carBodyMesh.castShadow = true;
+                this.carGroup.add(this.carBodyMesh);
+
+                const cabin = new THREE.Mesh(
+                    new THREE.BoxGeometry(1.6, 0.55, 2.2),
+                    new THREE.MeshStandardMaterial({ color: 0x08080c, roughness: 0.05, metalness: 0.9, transparent: true, opacity: 0.9 })
+                );
+                cabin.position.set(0, 1.15, -0.2);
+                this.carGroup.add(cabin);
+
+                const wheelGeo = new THREE.CylinderGeometry(0.38, 0.38, 0.4, 24);
+                wheelGeo.rotateZ(Math.PI / 2);
+                const wheelMat = new THREE.MeshStandardMaterial({ color: 0x151515, roughness: 0.2, metalness: 0.9 });
+                
+                [[-1.1, 0.38, 1.35], [1.1, 0.38, 1.35], [-1.1, 0.38, -1.35], [1.1, 0.38, -1.35]].forEach(pos => {
+                    const wheel = new THREE.Mesh(wheelGeo, wheelMat);
+                    wheel.position.set(...pos);
+                    this.carGroup.add(wheel);
+                });
+
+                this.scene.add(this.carGroup);
+                this.carGroup.position.set(0, 0, 220);
+
+                this.speed = 0;
+                this.carAngle = 0;
+            }
+
+            initControls() {
+                this.keys = { forward: false, backward: false, left: false, right: false, drift: false };
+                window.addEventListener('keydown', (e) => this.updateKeys(e, true));
+                window.addEventListener('keyup', (e) => this.updateKeys(e, false));
+            }
+
+            updateKeys(e, isDown) {
+                switch(e.key.toLowerCase()) {
+                    case 'w': case 'arrowup': this.keys.forward = isDown; break;
+                    case 's': case 'arrowdown': this.keys.backward = isDown; break;
+                    case 'a': case 'arrowleft': this.keys.left = isDown; break;
+                    case 'd': case 'arrowright': this.keys.right = isDown; break;
+                    case ' ': this.keys.drift = isDown; break;
+                }
+            }
+
+            populateDealershipUI() {
+                const grid = document.getElementById('dealership-grid');
+                grid.innerHTML = '';
+                this.catalog.forEach(car => {
+                    const card = document.createElement('div');
+                    card.className = 'car-card';
+                    card.innerHTML = `
+                        <h3>${car.name}</h3>
+                        <p>Price: $${car.price.toLocaleString()} | Tier ${car.id}</p>
+                        <button class="btn" id="buy-car-${car.id}">Buy Ride</button>
+                    `;
+                    grid.appendChild(card);
+                    setTimeout(() => {
+                        const btn = document.getElementById(`buy-car-${car.id}`);
+                        if (btn) btn.onclick = () => this.buyCar(car);
+                    }, 0);
+                });
+            }
+
+            populateTerritoriesUI() {
+                const grid = document.getElementById('territory-grid');
+                grid.innerHTML = '';
+                this.territories.forEach(t => {
+                    const card = document.createElement('div');
+                    card.className = 'territory-card';
+                    card.innerHTML = `
+                        <h3>${t.name}</h3>
+                        <p><b>Boss:</b> ${t.boss}</p>
+                        <p>Crew Racers Beaten: <b>${t.racesBeaten} / 3</b></p>
+                        <p>Status: <span style="color: ${t.owned ? '#00ffcc' : '#ff007f'}">${t.owned ? 'CONQUERED (Owned)' : 'Contested'}</span></p>
+                        ${!t.owned && t.racesBeaten < 3 ? `<button class="btn" onclick="game.raceCrewMember(${t.id})">Race Crew Racer ($5k)</button>` : ''}
+                        ${!t.owned && t.racesBeaten >= 3 ? `<button class="btn" style="background:#00ffcc; color:#000;" onclick="game.fightBoss(${t.id})">Challenge Boss (${t.boss})</button>` : ''}
+                    `;
+                    grid.appendChild(card);
+                });
+            }
+
+            raceCrewMember(territoryId) {
+                const t = this.territories[territoryId];
+                if (this.playerMoney >= 5000) {
+                    this.playerMoney -= 5000;
+                    document.getElementById('bank-balance').innerText = `BANK: $${this.playerMoney.toLocaleString()}`;
+                    
+                    // Win probability
+                    if (Math.random() > 0.25) {
+                        t.racesBeaten++;
+                        this.playerMoney += 8500;
+                        alert(`Victory against ${t.name} crew member! Earned $8,500 prize money. (${t.racesBeaten}/3 crew beaten)`);
+                    } else {
+                        alert(`You lost the street race against the ${t.name} crew member! Better luck next time.`);
+                    }
+                    this.populateTerritoriesUI();
+                } else {
+                    alert("You need at least $5,000 to enter this crew wager race.");
+                }
+            }
+
+            fightBoss(territoryId) {
+                const t = this.territories[territoryId];
+                alert(`Showdown! Racing Crew Boss ${t.boss} for ownership of ${t.name}...`);
+                
+                // Higher stakes boss battle
+                if (this.currentMaxSpeed >= 0.95 || Math.random() > 0.35) {
+                    t.owned = true;
+                    this.territoriesOwned++;
+                    this.playerMoney += t.reward;
+                    document.getElementById('bank-balance').innerText = `BANK: $${this.playerMoney.toLocaleString()}`;
+                    document.getElementById('territory-status').innerText = `TERRITORIES OWNED: ${this.territoriesOwned} / 8`;
+                    alert(`LEGENDARY VICTORY! You defeated boss ${t.boss} and claimed ${t.name} territory! Reward: $${t.reward.toLocaleString()}`);
+                } else {
+                    alert(`Boss ${t.boss} out-tuned you! Upgrade your car at the Level 29 Workshop before trying again.`);
+                }
+                this.populateTerritoriesUI();
+            }
+
+            buyCar(car) {
+                if (this.playerMoney >= car.price) {
+                    this.playerMoney -= car.price;
+                    this.currentMaxSpeed = car.topSpeed;
+                    document.getElementById('bank-balance').innerText = `BANK: $${this.playerMoney.toLocaleString()}`;
+                    document.getElementById('current-car-name').innerText = car.name;
+                    alert(`Successfully purchased and deployed ${car.name}!`);
+                    toggleModal('dealership-modal');
+                } else {
+                    alert("Not enough cash in your bank balance!");
+                }
+            }
+
+            upgradeCar(name, cost, speedBoost) {
+                if (this.playerMoney >= cost) {
+                    this.playerMoney -= cost;
+                    this.currentMaxSpeed += speedBoost;
+                    document.getElementById('bank-balance').innerText = `BANK: $${this.playerMoney.toLocaleString()}`;
+                    alert(`Installed ${name}! Performance upgraded.`);
+                    toggleModal('garage-modal');
+                } else {
+                    alert("Insufficient funds for this upgrade package.");
+                }
+            }
+
+            setCarColor(hex, roughness, metalness) {
+                this.bodyMat.color.setHex(hex);
+                this.bodyMat.roughness = roughness;
+                this.bodyMat.metalness = metalness;
+                alert("Custom candy paint finish applied!");
+                toggleModal('garage-modal');
+            }
+
+            animate() {
+                requestAnimationFrame(this.animate);
+
+                const acceleration = 0.012;
+                const deceleration = 0.008;
+                const turnSpeed = 0.045;
+
+                if (this.keys.forward) this.speed = Math.min(this.speed + acceleration, this.currentMaxSpeed);
+                else if (this.keys.backward) this.speed = Math.max(this.speed - acceleration, -this.currentMaxSpeed / 3);
+                else {
+                    if (this.speed > 0) this.speed = Math.max(this.speed - deceleration, 0);
+                    if (this.speed < 0) this.speed = Math.min(this.speed + deceleration, 0);
+                }
+
+                let currentTurn = turnSpeed;
+                if (this.keys.drift) currentTurn *= 1.6;
+
+                if (Math.abs(this.speed) > 0.03) {
+                    if (this.keys.left) { this.carAngle += currentTurn * Math.sign(this.speed); this.carGroup.rotation.y = this.carAngle; }
+                    if (this.keys.right) { this.carAngle -= currentTurn * Math.sign(this.speed); this.carGroup.rotation.y = this.carAngle; }
+                }
+
+                this.carGroup.position.x += Math.sin(this.carAngle) * this.speed;
+                this.carGroup.position.z += Math.cos(this.carAngle) * this.speed;
+
+                // Infinite road looping
+                if (this.carGroup.position.z < -700) this.carGroup.position.z = 700;
+                if (this.carGroup.position.z > 700) this.carGroup.position.z = -700;
+                this.carGroup.position.x = Math.max(Math.min(this.carGroup.position.x, 9.5), -9.5);
+
+                // Cinematic Chase Camera
+                const targetX = this.carGroup.position.x - Math.sin(this.carAngle) * 11;
+                const targetZ = this.carGroup.position.z - Math.cos(this.carAngle) * 11;
+                this.camera.position.x += (targetX - this.camera.position.x) * 0.15;
+                this.camera.position.z += (targetZ - this.camera.position.z) * 0.15;
+                this.camera.position.y = this.carGroup.position.y + 3.8;
+                this.camera.lookAt(this.carGroup.position.x, this.carGroup.position.y + 0.8, this.carGroup.position.z - 4);
+
+                // Realistic MPH calculation
+                const realMph = Math.round((Math.abs(this.speed) / this.currentMaxSpeed) * 155);
+                document.getElementById('speedometer').innerText = `SPEED: ${realMph} MPH`;
+
+                this.renderer.render(this.scene, this.camera);
+            }
+        }
+
+        const game = new NolaStreetRacerGame();
+        window.game = game;
+    </script>
+</body>
+</html>
