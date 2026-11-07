@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Level 29 Ent: NOLA Turf Wars</title>
+    <title>Level 29 Ent: NOLA Open World & On-Foot Interriors</title>
     <style>
         body {
             margin: 0;
@@ -35,7 +35,7 @@
             display: none;
             z-index: 100;
         }
-        #dealership-modal, #territory-modal, #garage-modal {
+        #dealership-modal, #territory-modal, #garage-modal, #interior-modal {
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
@@ -115,19 +115,31 @@
 </head>
 <body>
     <div id="ui">
-        <h1>LEVEL 29 ENT: NOLA TURF WARS</h1>
+        <h1>LEVEL 29 ENT: NOLA OPEN WORLD</h1>
         <p id="speedometer">SPEED: 0 MPH</p>
         <p id="bank-balance" style="color: #00ffcc; margin-top: 5px;">BANK: $50,000</p>
-        <p id="heat-level" style="color: #ff3333; margin-top: 5px;">NOPD HEAT LEVEL: ⭐ 0</p>
-        <p id="territory-status" style="color: #ffaa00; margin-top: 5px;">TERRITORIES OWNED: 0 / 8</p>
+        <p id="mode-status" style="color: #ffaa00; margin-top: 5px;">MODE: DRIVING VEHICLE</p>
     </div>
 
-    <div id="controls-hint">Use <b>W / A / S / D</b> to Drive | <b>SPACE</b> to Drift | Hold <b>SHIFT</b> for Nitro 🚀 | Press <b>H</b> for NOPD Sirens</div>
+    <div id="controls-hint">Use <b>W/A/S/D</b> to Drive | <b>SPACE</b> to Drift | <b>F</b> to Exit Car & Walk | <b>ENTER</b> to Enter Building</div>
 
     <div id="menu-bar">
-        <button class="menu-btn" onclick="toggleModal('territory-modal')">🗺️ 8 TERRITORY CREWS</button>
-        <button class="menu-btn" onclick="toggleModal('dealership-modal')">🚗 100-CAR SHOWROOM</button>
-        <button class="menu-btn" onclick="toggleModal('garage-modal')">🛠️ TUNING WORKSHOP</button>
+        <button class="menu-btn" onclick="toggleModal('territory-modal')">🗺️ 8 TERRITORIES</button>
+        <button class="menu-btn" onclick="toggleModal('dealership-modal')">🚗 DEALERSHIP</button>
+        <button class="menu-btn" onclick="toggleModal('garage-modal')">🛠️ WORKSHOP</button>
+    </div>
+
+    <!-- ENTERABLE BUILDING INTERIOR MODAL -->
+    <div id="interior-modal" class="hud-panel">
+        <div class="modal-header">
+            <h2 style="margin:0; color:#00ffcc;" id="interior-title">French Quarter Jazz Club & Lounge</h2>
+            <button class="btn" onclick="toggleModal('interior-modal')">Exit Building</button>
+        </div>
+        <p style="margin-bottom:15px; color:#aaa;">You walked inside! Explore the interior lounge, interact with locals, or collect hidden cash stashes.</p>
+        <div style="display:flex; gap:15px; justify-content:center;">
+            <button class="btn" onclick="game.collectBounty(5000)">Search Cash Stash (+$5,000)</button>
+            <button class="btn" style="background:#00ffcc; color:#000;" onclick="toggleModal('interior-modal')">Return to Street</button>
+        </div>
     </div>
 
     <!-- TERRITORIES MODAL -->
@@ -136,7 +148,6 @@
             <h2 style="margin:0; color:#00ffcc;">New Orleans 8 Turf Sectors & Crew Bosses</h2>
             <button class="btn" onclick="toggleModal('territory-modal')">✕</button>
         </div>
-        <p style="margin-bottom:15px; font-size:13px; color:#aaa;">Defeat 3 crew racers in each sector to unlock the Crew Boss and claim territory ownership!</p>
         <div class="territory-grid" id="territory-grid"></div>
     </div>
 
@@ -158,10 +169,9 @@
         <div>
             <h3 style="color:#00ffcc;">Current Ride: <span id="current-car-name">1971 Chevy Impala Donk</span></h3>
             <div style="margin-top: 15px; display:flex; flex-direction:column; gap:10px;">
-                <button class="btn" onclick="game.upgradeCar('Twin Turbo Kit', 5000, 0.15)">Upgrade Twin Turbo (+30 MPH Top Speed) - $5,000</button>
-                <button class="btn" onclick="game.setCarColor(0xff0055, 0.1, 0.9)">Apply Candy Neon Pink Finish - $1,500</button>
-                <button class="btn" onclick="game.setCarColor(0x00ffff, 0.1, 0.9)">Apply Electric Cyan Finish - $1,500</button>
-                <button class="btn" onclick="game.upgradeCar('Hydraulics & Spinners', 8000, 0.25)">Install Hydraulics & Spinners - $8,000</button>
+                <button class="btn" onclick="game.upgradeCar('Twin Turbo Kit', 5000, 0.15)">Upgrade Twin Turbo (+30 MPH) - $5,000</button>
+                <button class="btn" onclick="game.setCarColor(0xff0055, 0.1, 0.9)">Apply Candy Neon Pink - $1,500</button>
+                <button class="btn" onclick="game.setCarColor(0x00ffff, 0.1, 0.9)">Apply Electric Cyan - $1,500</button>
             </div>
         </div>
     </div>
@@ -174,13 +184,12 @@
             m.style.display = m.style.display === 'block' ? 'none' : 'block';
         }
 
-        class NolaStreetRacerGame {
+        class NolaOpenWorldGame {
             constructor() {
                 this.playerMoney = 50000;
-                this.territoriesOwned = 0;
                 this.currentMaxSpeed = 0.8;
-                this.heatLevel = 0;
-                this.isPursuitActive = false;
+                this.isWalking = false;
+                this.walkPos = { x: 0, z: 200 };
 
                 this.generateCatalog();
                 this.generateTerritories();
@@ -208,26 +217,16 @@
 
             generateTerritories() {
                 const sectorNames = [
-                    "1. French Quarter (Historic District)",
-                    "2. Tremé Underground",
-                    "3. St. Claude Industrial Corridor",
-                    "4. Warehouse District Docks",
-                    "5. I-10 Twin Span Highway",
-                    "6. Uptown Garden District",
-                    "7. Algiers Point Riverside",
-                    "8. New Orleans East Bayou"
+                    "1. French Quarter", "2. Tremé Underground", "3. St. Claude Corridor", 
+                    "4. Warehouse District", "5. I-10 Twin Span", "6. Uptown District", 
+                    "7. Algiers Point", "8. New Orleans East"
                 ];
-                const bossNames = ["'Vieux Carré' Vance", "Tuba Tone", "'Gator' Gauthier", "Captain Roux", "Bridge King Marcus", "Madame LaLaurie", "Delta Dawg", "Swamp Reaper"];
+                const bossNames = ["Vance", "Tuba Tone", "Gator", "Captain Roux", "Marcus", "Madame LaLaurie", "Delta Dawg", "Swamp Reaper"];
                 
                 this.territories = [];
                 for (let i = 0; i < 8; i++) {
                     this.territories.push({
-                        id: i,
-                        name: sectorNames[i],
-                        boss: bossNames[i],
-                        racesBeaten: 0,
-                        owned: false,
-                        reward: 25000 + (i * 10000)
+                        id: i, name: sectorNames[i], boss: bossNames[i], racesBeaten: 0, owned: false, reward: 25000 + (i * 10000)
                     });
                 }
             }
@@ -235,14 +234,13 @@
             initThree() {
                 this.scene = new THREE.Scene();
                 this.scene.background = new THREE.Color(0x020208);
-                this.scene.fog = new THREE.FogExp2(0x020208, 0.005);
+                this.scene.fog = new THREE.FogExp2(0x020208, 0.004);
 
                 this.camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 1500);
                 this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
                 this.renderer.setSize(window.innerWidth, window.innerHeight);
                 this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
                 this.renderer.shadowMap.enabled = true;
-                this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
                 document.body.appendChild(this.renderer.domElement);
 
                 // Lighting
@@ -254,42 +252,44 @@
                 overheadLight.castShadow = true;
                 this.scene.add(overheadLight);
 
-                // Road
-                const roadMat = new THREE.MeshStandardMaterial({ color: 0x14141a, roughness: 0.35, metalness: 0.1 });
-                const road = new THREE.Mesh(new THREE.PlaneGeometry(24, 1600), roadMat);
-                road.rotation.x = -Math.PI / 2;
-                road.receiveShadow = true;
-                this.scene.add(road);
+                // --- INTERSECTING & PARALLEL STREET GRID ---
+                const roadMat = new THREE.MeshStandardMaterial({ color: 0x14141a, roughness: 0.35 });
+                
+                // Main North-South Highway 1
+                const roadNS1 = new THREE.Mesh(new THREE.PlaneGeometry(24, 2000), roadMat);
+                roadNS1.rotation.x = -Math.PI / 2;
+                this.scene.add(roadNS1);
 
-                for (let i = -750; i <= 750; i += 12) {
-                    const stripe = new THREE.Mesh(
-                        new THREE.PlaneGeometry(0.4, 5),
-                        new THREE.MeshBasicMaterial({ color: 0x00ffcc })
-                    );
-                    stripe.rotation.x = -Math.PI / 2;
-                    stripe.position.set(0, 0.03, i);
-                    this.scene.add(stripe);
+                // Parallel North-South Highway 2
+                const roadNS2 = new THREE.Mesh(new THREE.PlaneGeometry(24, 2000), roadMat);
+                roadNS2.rotation.x = -Math.PI / 2;
+                roadNS2.position.set(60, 0, 0);
+                this.scene.add(roadNS2);
+
+                // Intersecting East-West Avenues
+                for (let zPos = -800; zPos <= 800; zPos += 200) {
+                    const roadEW = new THREE.Mesh(new THREE.PlaneGeometry(140, 20), roadMat);
+                    roadEW.rotation.x = -Math.PI / 2;
+                    roadEW.position.set(30, 0.01, zPos);
+                    this.scene.add(roadEW);
                 }
 
-                // Buildings
-                const brickMat = new THREE.MeshStandardMaterial({ color: 0x2b1d1a, roughness: 0.8, metalness: 0.1 });
-                const concreteMat = new THREE.MeshStandardMaterial({ color: 0x1f1f26, roughness: 0.6, metalness: 0.3 });
-                const windowGlow = new THREE.MeshBasicMaterial({ color: 0xffbb44 });
+                // --- ENTERABLE BUILDINGS ---
+                const bldMat = new THREE.MeshStandardMaterial({ color: 0x2b1d1a, roughness: 0.8 });
+                const doorMat = new THREE.MeshBasicMaterial({ color: 0x00ffcc });
 
-                for (let i = -700; i <= 700; i += 32) {
-                    [-20, 20].forEach((xPos, idx) => {
-                        const mat = idx === 0 ? brickMat : concreteMat;
-                        const h = 35 + Math.random() * 50;
-                        const bld = new THREE.Mesh(new THREE.BoxGeometry(16, h, 26), mat);
-                        bld.position.set(xPos, h / 2, i);
-                        bld.castShadow = true;
-                        bld.receiveShadow = true;
+                this.enterableDoors = [];
+                for (let zPos = -700; zPos <= 700; zPos += 200) {
+                    [-35, 95].forEach(xPos => {
+                        const bld = new THREE.Mesh(new THREE.BoxGeometry(25, 45, 30), bldMat);
+                        bld.position.set(xPos, 22.5, zPos);
                         this.scene.add(bld);
 
-                        const win = new THREE.Mesh(new THREE.PlaneGeometry(8, h * 0.6), windowGlow);
-                        win.position.set(xPos > 0 ? xPos - 8.01 : xPos + 8.01, h / 2, i);
-                        win.rotation.y = xPos > 0 ? -Math.PI / 2 : Math.PI / 2;
-                        this.scene.add(win);
+                        // Glowing Enterable Door Marker
+                        const door = new THREE.Mesh(new THREE.BoxGeometry(4, 8, 1), doorMat);
+                        door.position.set(xPos, 4, zPos + 15.1);
+                        this.scene.add(door);
+                        this.enterableDoors.push({ x: xPos, z: zPos, name: "NOLA Urban Lounge & Garage" });
                     });
                 }
 
@@ -298,9 +298,238 @@
                 this.bodyMat = new THREE.MeshStandardMaterial({ color: 0x8800ff, roughness: 0.15, metalness: 0.85 });
                 this.carBodyMesh = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.65, 4.4), this.bodyMat);
                 this.carBodyMesh.position.y = 0.6;
-                this.carBodyMesh.castShadow = true;
                 this.carGroup.add(this.carBodyMesh);
 
                 const cabin = new THREE.Mesh(
                     new THREE.BoxGeometry(1.6, 0.55, 2.2),
-                    new THREE.MeshStandardMaterial({ color: 0x080
+                    new THREE.MeshStandardMaterial({ color: 0x08080c, roughness: 0.05, transparent: true, opacity: 0.9 })
+                );
+                cabin.position.set(0, 1.15, -0.2);
+                this.carGroup.add(cabin);
+
+                this.scene.add(this.carGroup);
+                this.carGroup.position.set(0, 0, 200);
+
+                // On-Foot Pedestrian Player Model
+                this.playerAvatar = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.4, 0.4, 1.8),
+                    new THREE.MeshStandardMaterial({ color: 0xff007f })
+                );
+                this.playerAvatar.position.set(0, 0.9, 205);
+                this.playerAvatar.visible = false;
+                this.scene.add(this.playerAvatar);
+
+                this.speed = 0;
+                this.carAngle = 0;
+            }
+
+            initControls() {
+                this.keys = { forward: false, backward: false, left: false, right: false, drift: false };
+                window.addEventListener('keydown', (e) => {
+                    this.updateKeys(e, true);
+                    if (e.key.toLowerCase() === 'f') this.toggleOnFoot();
+                    if (e.key === 'Enter') this.checkEnterBuilding();
+                });
+                window.addEventListener('keyup', (e) => this.updateKeys(e, false));
+            }
+
+            updateKeys(e, isDown) {
+                switch(e.key.toLowerCase()) {
+                    case 'w': case 'arrowup': this.keys.forward = isDown; break;
+                    case 's': case 'arrowdown': this.keys.backward = isDown; break;
+                    case 'a': case 'arrowleft': this.keys.left = isDown; break;
+                    case 'd': case 'arrowright': this.keys.right = isDown; break;
+                }
+            }
+
+            toggleOnFoot() {
+                this.isWalking = !this.isWalking;
+                if (this.isWalking) {
+                    this.walkPos.x = this.carGroup.position.x + 3;
+                    this.walkPos.z = this.carGroup.position.z;
+                    this.playerAvatar.position.set(this.walkPos.x, 0.9, this.walkPos.z);
+                    this.playerAvatar.visible = true;
+                    document.getElementById('mode-status').innerText = `MODE: ON FOOT (Walking)`;
+                    alert("🚪 Exited vehicle. Walk near a glowing cyan door and press ENTER to go inside!");
+                } else {
+                    this.playerAvatar.visible = false;
+                    document.getElementById('mode-status').innerText = `MODE: DRIVING VEHICLE`;
+                    alert("🚗 Entered vehicle.");
+                }
+            }
+
+            checkEnterBuilding() {
+                if (!this.isWalking) return;
+                this.enterableDoors.forEach(door => {
+                    const dist = Math.hypot(this.playerAvatar.position.x - door.x, this.playerAvatar.position.z - door.z);
+                    if (dist < 8) {
+                        document.getElementById('interior-title').innerText = door.name;
+                        toggleModal('interior-modal');
+                    }
+                });
+            }
+
+            collectBounty(amount) {
+                this.playerMoney += amount;
+                document.getElementById('bank-balance').innerText = `BANK: $${this.playerMoney.toLocaleString()}`;
+                alert(`Collected hidden stash! +$${amount.toLocaleString()}`);
+            }
+
+            populateDealershipUI() {
+                const grid = document.getElementById('dealership-grid');
+                grid.innerHTML = '';
+                this.catalog.forEach(car => {
+                    const card = document.createElement('div');
+                    card.className = 'car-card';
+                    card.innerHTML = `
+                        <h3>${car.name}</h3>
+                        <p>Price: $${car.price.toLocaleString()} | Tier ${car.id}</p>
+                        <button class="btn" id="buy-car-${car.id}">Buy Ride</button>
+                    `;
+                    grid.appendChild(card);
+                    setTimeout(() => {
+                        const btn = document.getElementById(`buy-car-${car.id}`);
+                        if (btn) btn.onclick = () => this.buyCar(car);
+                    }, 0);
+                });
+            }
+
+            populateTerritoriesUI() {
+                const grid = document.getElementById('territory-grid');
+                grid.innerHTML = '';
+                this.territories.forEach(t => {
+                    const card = document.createElement('div');
+                    card.className = 'territory-card';
+                    card.innerHTML = `
+                        <h3>${t.name}</h3>
+                        <p><b>Boss:</b> ${t.boss}</p>
+                        <p>Crew Beaten: <b>${t.racesBeaten} / 3</b></p>
+                        <p>Status: <span style="color: ${t.owned ? '#00ffcc' : '#ff007f'}">${t.owned ? 'OWNED' : 'Contested'}</span></p>
+                        ${!t.owned && t.racesBeaten < 3 ? `<button class="btn" onclick="game.raceCrewMember(${t.id})">Race Crew ($5k)</button>` : ''}
+                        ${!t.owned && t.racesBeaten >= 3 ? `<button class="btn" style="background:#00ffcc; color:#000;" onclick="game.fightBoss(${t.id})">Fight Boss (${t.boss})</button>` : ''}
+                    `;
+                    grid.appendChild(card);
+                });
+            }
+
+            raceCrewMember(territoryId) {
+                const t = this.territories[territoryId];
+                if (this.playerMoney >= 5000) {
+                    this.playerMoney -= 5000;
+                    document.getElementById('bank-balance').innerText = `BANK: $${this.playerMoney.toLocaleString()}`;
+                    if (Math.random() > 0.25) {
+                        t.racesBeaten++;
+                        this.playerMoney += 8500;
+                        alert(`Won race against ${t.name} crew! +$8,500.`);
+                    } else {
+                        alert(`Lost race against ${t.name} crew.`);
+                    }
+                    this.populateTerritoriesUI();
+                } else {
+                    alert("Need $5,000 to race.");
+                }
+            }
+
+            fightBoss(territoryId) {
+                const t = this.territories[territoryId];
+                if (this.currentMaxSpeed >= 0.95 || Math.random() > 0.35) {
+                    t.owned = true;
+                    this.playerMoney += t.reward;
+                    document.getElementById('bank-balance').innerText = `BANK: $${this.playerMoney.toLocaleString()}`;
+                    alert(`Defeated boss ${t.boss} and claimed ${t.name}! +$${t.reward.toLocaleString()}`);
+                } else {
+                    alert(`Boss ${t.boss} won! Upgrade car at Workshop.`);
+                }
+                this.populateTerritoriesUI();
+            }
+
+            buyCar(car) {
+                if (this.playerMoney >= car.price) {
+                    this.playerMoney -= car.price;
+                    this.currentMaxSpeed = car.topSpeed;
+                    document.getElementById('bank-balance').innerText = `BANK: $${this.playerMoney.toLocaleString()}`;
+                    document.getElementById('current-car-name').innerText = car.name;
+                    alert(`Purchased ${car.name}!`);
+                    toggleModal('dealership-modal');
+                } else {
+                    alert("Insufficient funds!");
+                }
+            }
+
+            upgradeCar(name, cost, speedBoost) {
+                if (this.playerMoney >= cost) {
+                    this.playerMoney -= cost;
+                    this.currentMaxSpeed += speedBoost;
+                    document.getElementById('bank-balance').innerText = `BANK: $${this.playerMoney.toLocaleString()}`;
+                    alert(`Installed ${name}!`);
+                    toggleModal('garage-modal');
+                } else {
+                    alert("Insufficient funds!");
+                }
+            }
+
+            setCarColor(hex, roughness, metalness) {
+                this.bodyMat.color.setHex(hex);
+                this.bodyMat.roughness = roughness;
+                this.bodyMat.metalness = metalness;
+                alert("Custom candy paint applied!");
+                toggleModal('garage-modal');
+            }
+
+            animate() {
+                requestAnimationFrame(this.animate);
+
+                if (this.isWalking) {
+                    const walkSpeed = 0.3;
+                    if (this.keys.forward) this.walkPos.z -= walkSpeed;
+                    if (this.keys.backward) this.walkPos.z += walkSpeed;
+                    if (this.keys.left) this.walkPos.x -= walkSpeed;
+                    if (this.keys.right) this.walkPos.x += walkSpeed;
+                    this.playerAvatar.position.set(this.walkPos.x, 0.9, this.walkPos.z);
+
+                    // Camera follow on foot
+                    this.camera.position.x = this.walkPos.x;
+                    this.camera.position.z = this.walkPos.z + 8;
+                    this.camera.position.y = 4;
+                    this.camera.lookAt(this.walkPos.x, 1, this.walkPos.z);
+                } else {
+                    const acceleration = 0.012;
+                    const deceleration = 0.008;
+                    const turnSpeed = 0.045;
+
+                    if (this.keys.forward) this.speed = Math.min(this.speed + acceleration, this.currentMaxSpeed);
+                    else if (this.keys.backward) this.speed = Math.max(this.speed - acceleration, -this.currentMaxSpeed / 3);
+                    else {
+                        if (this.speed > 0) this.speed = Math.max(this.speed - deceleration, 0);
+                        if (this.speed < 0) this.speed = Math.min(this.speed + deceleration, 0);
+                    }
+
+                    if (Math.abs(this.speed) > 0.03) {
+                        if (this.keys.left) { this.carAngle += turnSpeed * Math.sign(this.speed); this.carGroup.rotation.y = this.carAngle; }
+                        if (this.keys.right) { this.carAngle -= turnSpeed * Math.sign(this.speed); this.carGroup.rotation.y = this.carAngle; }
+                    }
+
+                    this.carGroup.position.x += Math.sin(this.carAngle) * this.speed;
+                    this.carGroup.position.z += Math.cos(this.carAngle) * this.speed;
+
+                    // Camera follow car
+                    const targetX = this.carGroup.position.x - Math.sin(this.carAngle) * 11;
+                    const targetZ = this.carGroup.position.z - Math.cos(this.carAngle) * 11;
+                    this.camera.position.x += (targetX - this.camera.position.x) * 0.15;
+                    this.camera.position.z += (targetZ - this.camera.position.z) * 0.15;
+                    this.camera.position.y = this.carGroup.position.y + 3.8;
+                    this.camera.lookAt(this.carGroup.position.x, this.carGroup.position.y + 0.8, this.carGroup.position.z - 4);
+
+                    const realMph = Math.round((Math.abs(this.speed) / this.currentMaxSpeed) * 155);
+                    document.getElementById('speedometer').innerText = `SPEED: ${realMph} MPH`;
+                }
+
+                this.renderer.render(this.scene, this.camera);
+            }
+        }
+
+        const game = new NolaOpenWorldGame();
+        window.game = game;
+    </script>
+</body>
+</html>
