@@ -1,0 +1,102 @@
+body {
+    margin: 0;
+    overflow: hidden;
+    background-color: #010104;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    user-select: none;
+}
+#ui {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    color: #00ffcc;
+    text-shadow: 0 0 10px rgba(0, 255, 204, 0.7);
+    pointer-events: none;
+}
+h1 { margin: 0 0 5px 0; font-size: 24px; letter-spacing: 2px; }
+p { margin: 0; color: #ff007f; font-weight: bold; font-size: 16px; text-shadow: 0 0 8px rgba(255, 0, 127, 0.7); }
+
+.hud-panel {
+    position: absolute;
+    background: rgba(10, 10, 20, 0.92);
+    border: 2px solid #00ffcc;
+    box-shadow: 0 0 20px rgba(0, 255, 204, 0.4);
+    border-radius: 8px;
+    color: white;
+    padding: 20px;
+    display: none;
+    z-index: 100;
+}
+#dealership-modal, #garage-modal {
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 750px;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #333;
+    padding-bottom: 10px;
+    margin-bottom: 15px;
+}
+.car-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+}
+.car-card {
+    background: rgba(20, 20, 35, 0.95);
+    border: 1px solid #ff007f;
+    padding: 12px;
+    border-radius: 6px;
+    text-align: center;
+}
+.car-card h3 { margin: 0 0 5px 0; color: #00ffcc; font-size: 16px; }
+.car-card p { font-size: 13px; color: #bbb; margin-bottom: 8px; }
+.btn {
+    background: #ff007f;
+    color: white;
+    border: none;
+    padding: 8px 14px;
+    font-weight: bold;
+    border-radius: 4px;
+    cursor: pointer;
+    box-shadow: 0 0 10px rgba(255, 0, 127, 0.8);
+    transition: 0.2s;
+}
+.btn:hover { background: #ff3399; box-shadow: 0 0 15px rgba(255, 51, 153, 1); }
+
+#menu-bar {
+    position: absolute;
+    bottom: 30px;
+    width: 100%;
+    text-align: center;
+    pointer-events: auto;
+}
+.menu-btn {
+    background: rgba(10, 10, 20, 0.9);
+    border: 2px solid #00ffcc;
+    color: #00ffcc;
+    padding: 10px 20px;
+    font-size: 16px;
+    font-weight: bold;
+    margin: 0 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    box-shadow: 0 0 12px rgba(0, 255, 204, 0.5);
+}
+.menu-btn:hover { background: #00ffcc; color: #000; }
+#controls-hint {
+    position: absolute;
+    bottom: 85px;
+    width: 100%;
+    text-align: center;
+    color: #ccc;
+    font-size: 14px;
+    pointer-events: none;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.9);
+}
