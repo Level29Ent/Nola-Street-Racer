@@ -1,0 +1,23 @@
+{
+  "name": "crescent-city-after-dark",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "vite build",
+    "preview": "vite preview --host 0.0.0.0",
+    "test": "node --test test/*.test.js",
+    "test:browser": "node scripts/browser-smoke.cjs"
+  },
+  "dependencies": {
+    "three": "0.181.1"
+  },
+  "devDependencies": {
+    "playwright": "^1.65.0",
+    "vite": "^7.2.2"
+  },
+  "engines": {
+    "node": ">=20.19.0"
+  }
+}

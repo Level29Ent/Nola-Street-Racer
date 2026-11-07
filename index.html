@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#080d18" />
+    <meta
+      name="description"
+      content="Crescent City: After Dark — an original New Orleans-inspired open-world street racing prototype."
+    />
+    <title>Crescent City • After Dark</title>
+  </head>
+  <body>
+    <canvas id="world" aria-label="3D street racing world"></canvas>
+    <div id="vignette"></div>
+    <div id="flash"></div>
+    <section id="intro" class="overlay">
+      <div class="intro-brand">
+        <span class="diamond">✦</span> LEVEL 29
+        <span class="muted">/ ORIGINAL PROTOTYPE</span>
+      </div>
+      <div class="intro-content">
+        <p class="eyebrow">NEW ORLEANS. NO CURFEW.</p>
+        <h1>CRESCENT<br /><span>CITY</span></h1>
+        <div class="subtitle">A F T E R &nbsp; D A R K</div>
+        <p class="intro-copy">
+          Candy paint. Dirty money. Wet asphalt.<br />Build your ride. Find your
+          line. Own the night.
+        </p>
+        <button id="start" class="primary">
+          ENTER THE CITY <span>↗</span>
+        </button>
+        <p class="intro-hint">
+          WASD / ARROWS TO DRIVE · SHIFT TO BOOST<br />Keyboard & touch ·
+          Headphones recommended
+        </p>
+      </div>
+      <div class="intro-bottom">
+        <span>29.9511° N &nbsp; 90.0715° W</span
+        ><span>STYLIZED OPEN WORLD · v0.1</span>
+      </div>
+    </section>
+    <main id="hud" hidden>
+      <header>
+        <a class="wordmark" href="#" id="brand" aria-label="Pause game"
+          >CC<span>AFTER DARK</span></a
+        >
+        <div class="district">
+          <span class="live-dot"></span><b id="district">FRENCH QUARTER</b
+          ><small id="weather">00:42 AM / LIGHT RAIN</small>
+        </div>
+        <div class="wallet">
+          <span id="rep">0 REP</span><b id="cash">$1,500</b
+          ><button id="pause" aria-label="Pause game">Ⅱ</button>
+        </div>
+      </header>
+      <nav class="top-actions">
+        <button id="garage-button">GARAGE <kbd>G</kbd></button
+        ><button id="missions-button">RACE BOARD <kbd>R</kbd></button
+        ><button id="map-button">MAP <kbd>M</kbd></button
+        ><button id="audio" aria-pressed="false">SOUND OFF</button
+        ><button id="quality" aria-pressed="true">FX HIGH</button
+        ><button id="recover" aria-label="Recover car" title="Recover car">
+          ↻
+        </button>
+      </nav>
+      <section class="mission-hud glass" id="mission-hud">
+        <p class="eyebrow" id="mission-label">THE CITY IS YOURS</p>
+        <h2 id="mission-title">Make a name for yourself.</h2>
+        <p id="mission-desc">
+          Open the race board to challenge a crew.<br />Click the map to set
+          your own waypoint.
+        </p>
+        <div id="race-progress" hidden>
+          <span id="checkpoint-count"></span><b id="race-time"></b>
+        </div>
+        <button id="abandon" hidden>ABANDON RACE</button>
+      </section>
+      <div id="toast" role="status" aria-live="polite"></div>
+      <div class="bottom-left">
+        <div class="map-wrap glass">
+          <div class="map-label">
+            <span>THE CRESCENT CITY</span
+            ><span id="waypoint-distance">FREE ROAM</span>
+          </div>
+          <canvas
+            id="map"
+            width="320"
+            height="240"
+            aria-label="City map. Click to set a waypoint."
+            tabindex="0"
+          ></canvas>
+          <div class="map-legend">
+            <i class="cyan"></i>YOU <i class="gold"></i>CHECKPOINT
+            <i class="red"></i>POLICE
+          </div>
+        </div>
+        <div class="status-bars">
+          <label
+            >CONDITION <span id="health-value">100%</span
+            ><progress id="health" max="100" value="100"></progress></label
+          ><label
+            >NITROUS <span>SHIFT</span
+            ><progress id="nitro" max="100" value="100"></progress
+          ></label>
+        </div>
+      </div>
+      <div class="bottom-center">
+        <div class="abilities">
+          <button data-ability="zone">
+            <b>1</b> ZONE <span id="zone-cool">READY</span></button
+          ><button data-ability="roar">
+            <b>2</b> ROAR <span id="roar-cool">READY</span></button
+          ><button data-ability="emp">
+            <b>3</b> EMP <span id="emp-cool">READY</span>
+          </button>
+        </div>
+        <p class="controls">
+          WASD DRIVE &nbsp; SPACE DRIFT &nbsp; H HYDRAULICS &nbsp; T RECOVER
+        </p>
+      </div>
+      <div class="speedometer">
+        <div id="heat">○ ○ ○ ○ ○</div>
+        <div><b id="speed">000</b><span>MPH</span></div>
+        <p>
+          <span id="gear">N</span> <span id="car-name">CRESCENT CLASSIC</span>
+        </p>
+        <small id="zone-status">EASTBANK UNDERGROUND</small>
+      </div>
+      <div id="touch">
+        <div class="touch-steer">
+          <button data-key="a" aria-label="Steer left">◀</button
+          ><button data-key="d" aria-label="Steer right">▶</button>
+        </div>
+        <div class="touch-pedals">
+          <button data-key=" " aria-label="Handbrake">DRIFT</button
+          ><button data-key="shift" aria-label="Nitrous">N₂O</button
+          ><button data-key="s" aria-label="Reverse">REV</button
+          ><button data-key="w" aria-label="Accelerate">GAS</button>
+        </div>
+      </div>
+    </main>
+    <dialog id="garage" class="panel">
+      <div class="panel-top">
+        <div>
+          <p class="eyebrow">EASTBANK CUSTOMS</p>
+          <h2>Built, not bought.</h2>
+        </div>
+        <button data-close="garage" aria-label="Close garage">✕</button>
+      </div>
+      <p class="muted">
+        Tuning pauses the city. Your build saves automatically on this browser.
+      </p>
+      <div id="vehicle-list" class="vehicle-list"></div>
+      <div class="garage-grid">
+        <section>
+          <h3>01 / CANDY PAINT</h3>
+          <div id="paints" class="paints"></div>
+          <h3>02 / STANCE & WHEELS</h3>
+          <label
+            >Chrome wheels
+            <select id="rims">
+              <option value="0">20″ Forged</option>
+              <option value="1">26″ Deep Dish</option>
+              <option value="2">30″ Spinners</option>
+            </select></label
+          ><label
+            >Suspension
+            <select id="stance">
+              <option value="0">Street</option>
+              <option value="1">Slammed Coilovers</option>
+              <option value="2">Hydraulics</option>
+            </select></label
+          ><label
+            >Pulse underglow <input id="glow" type="checkbox" checked
+          /></label>
+        </section>
+        <section>
+          <h3>03 / UNDER THE HOOD</h3>
+          <div id="upgrades"></div>
+          <button id="repair" class="secondary">REPAIR & REFILL · $250</button>
+          <p class="muted">
+            Paint, stance, wheels & glow are free in this prototype. Press H to
+            hop with hydraulics installed.
+          </p>
+        </section>
+      </div>
+    </dialog>
+    <dialog id="race-board" class="panel">
+      <div class="panel-top">
+        <div>
+          <p class="eyebrow">NO PERMITS. NO PERMISSION.</p>
+          <h2>Who owns the night?</h2>
+        </div>
+        <button data-close="race-board" aria-label="Close race board">✕</button>
+      </div>
+      <div id="race-list"></div>
+      <p class="muted">
+        Open routes. Pass each checkpoint in order; the streets between them are
+        yours.
+      </p>
+    </dialog>
+    <dialog id="pause-menu" class="panel small-panel">
+      <p class="eyebrow">TAKE A BREATHER</p>
+      <h2>City on hold.</h2>
+      <p>
+        WASD / arrows — drive · Shift — nitrous<br />Space — drift · H —
+        hydraulics<br />1 / 2 / 3 — abilities · T — recover<br />G — garage · R
+        — race board · M — map<br />Escape / P — pause
+      </p>
+      <p class="muted">
+        Original fictional vehicles. Inspired by New Orleans, not a surveyed
+        map. Procedural prototype visuals and synthesized audio.
+      </p>
+      <button data-close="pause-menu" class="primary">
+        BACK TO THE STREETS ↗
+      </button>
+    </dialog>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
