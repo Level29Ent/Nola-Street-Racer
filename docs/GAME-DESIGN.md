@@ -96,3 +96,7 @@ All abilities are fictional arcade mechanics; no real-world vehicle-control inst
 5. Add production-quality vehicle rigs, tuning, accessibility, controller support, campaign content and multiplayer security as separate milestones.
 
 AAA production requires a multidisciplinary team, significant art/audio production, vehicle/music rights where applicable and sustained optimization. This prototype is a vertical-slice starting point, not a substitute for that work.
+
+## Nightlife upgrade implementation notes
+
+The renderer now uses procedural physical surface maps, generated environment lighting, bounded camera-relative cascaded moon shadows and nearby lamp/headlight shadows. Cockpit and rearview rendering, Box3 pole/traffic collision, drift/nitro smoke, sidewalk pedestrians, five-star witnessed pursuits, an eight-sector radar, three restorative safehouses, local-file music phone and analog touch steering extend the baseline above. Earlier prototype limitations in the tables describe the initial vertical slice; this section supersedes those items where noted. Generated Level 29 text branding is not a reproduction of official supplied artwork. There are no bundled official instrumentals, remote streaming feed, on-foot exit mode, real city-scale reflection probes, arbitrary-lamp shadow maps or validated native mobile builds.

@@ -1,4 +1,6 @@
 import * as THREE from "three";
+import { surfaceTexture, brandingTexture } from "./atmosphere.js";
+import { SAFEHOUSES } from "./dynamics.js";
 import { Reflector } from "three/addons/objects/Reflector.js";
 export const scene = new THREE.Scene();
 scene.background = new THREE.Color("#10142b");
@@ -24,6 +26,21 @@ const asphalt = mat("#18212b", 0.45, 0.24),
 const chrome = mat("#a9c4d0", 1, 0.15),
   rubber = mat("#070a0d", 0.1, 0.92),
   glass = mat("#18374b", 0.8, 0.12);
+const roadSurface = surfaceTexture("road"),
+  paintSurface = surfaceTexture("paint");
+asphalt.roughnessMap = roadSurface;
+asphalt.bumpMap = roadSurface;
+asphalt.bumpScale = 0.07;
+asphalt.metalness = 0.12;
+asphalt.roughness = 0.5;
+const decalMaterial = new THREE.MeshStandardMaterial({
+  map: brandingTexture(),
+  roughness: 0.5,
+  metalness: 0.2,
+  polygonOffset: true,
+  polygonOffsetFactor: -2,
+});
+const decalGeometry = new THREE.PlaneGeometry(1, 0.5);
 const unit = new THREE.BoxGeometry(1, 1, 1);
 export function block(w, h, d, material, x = 0, y = 0, z = 0, parent = scene) {
   const mesh = new THREE.Mesh(unit, material);
@@ -121,7 +138,7 @@ export function sign(
 }
 export function createWorld() {
   scene.add(new THREE.HemisphereLight("#7189cd", "#15232d", 2.0));
-  const moon = new THREE.DirectionalLight("#8fabf8", 2.2);
+  const moon = new THREE.DirectionalLight("#8fabf8", 0.8);
   moon.position.set(-100, 200, -200);
   scene.add(moon);
   block(6000, 0.2, 6000, grass, 0, -0.3, 0);
@@ -207,6 +224,7 @@ export function createWorld() {
         [x + 13, z + 14],
         [x + 87, z + 86],
       ]) {
+        boxes.push({ x: lx, z: lz, w: 0.4, d: 0.4, h: 6 });
         lamps.push({ x: lx, y: 3, z: lz, w: 0.18, h: 6, d: 0.18 });
         bulbs.push({ x: lx, y: 6.1, z: lz, w: 0.8, h: 1, d: 0.8 });
       }
@@ -265,6 +283,27 @@ export function createWorld() {
     scene.add(light);
     objects.push(light);
   }
+  for (const home of SAFEHOUSES) {
+    sign(
+      "SAFEHOUSE / " + home.name.toUpperCase(),
+      home.x - 23,
+      5,
+      home.z + 13,
+      "#54efba",
+      Math.PI,
+      18,
+    );
+  }
+  for (const [x, z] of [
+    [-30, -13.1],
+    [-230, -213.1],
+    [330, 313.1],
+  ]) {
+    const tag = new THREE.Mesh(decalGeometry, decalMaterial);
+    tag.scale.set(12, 12, 12);
+    tag.position.set(x, 3.5, z);
+    scene.add(tag);
+  }
   const moonMesh = new THREE.Mesh(
     new THREE.SphereGeometry(13, 20, 20),
     new THREE.MeshBasicMaterial({ color: "#a9b9d2" }),
@@ -278,10 +317,37 @@ export function createWorld() {
     textureHeight: 512,
     clipBias: 0.003,
   });
+  // Irregular puddle mask avoids turning the whole road into a perfect mirror.
+  reflection.material.vertexShader = reflection.material.vertexShader
+    .replace("varying vec4 vUv;", "varying vec4 vUv; varying vec2 puddleUv;")
+    .replace("vUv = textureMatrix", "puddleUv = uv; vUv = textureMatrix");
+  reflection.material.fragmentShader = reflection.material.fragmentShader
+    .replace("varying vec4 vUv;", "varying vec4 vUv; varying vec2 puddleUv;")
+    .replace(
+      "vec4 base =",
+      "float edge=length((puddleUv-.5)*vec2(2.,2.)); if(edge>.91+.045*sin(puddleUv.y*69.)) discard; vec4 base =",
+    );
   reflection.rotation.x = -Math.PI / 2;
   reflection.position.set(0, 0.065, -45);
   scene.add(reflection);
-  return { reflection, lights: objects };
+  return {
+    reflection,
+    lights: objects,
+    setWet(value, car) {
+      asphalt.roughness = 0.75 - value * 0.56;
+      scene.fog.density = 0.0016 + value * 0.0011;
+      if (car) {
+        const alongX = Math.abs(Math.sin(car.heading)) > 0.7;
+        reflection.rotation.z = alongX ? Math.PI / 2 : 0;
+        reflection.position.x = alongX
+          ? Math.round(car.x / 60) * 60
+          : Math.round(car.x / 100) * 100;
+        reflection.position.z = alongX
+          ? Math.round(car.z / 100) * 100
+          : Math.round(car.z / 60) * 60;
+      }
+    },
+  };
 }
 export function createCar(type, color, rim = 1) {
   const root = new THREE.Group(),
@@ -292,7 +358,10 @@ export function createCar(type, color, rim = 1) {
     metalness: 0.75,
     roughness: 0.22,
     clearcoat: 1,
-    clearcoatRoughness: 0.12,
+    clearcoatRoughness: 0.09,
+    roughnessMap: paintSurface,
+    metalnessMap: paintSurface,
+    envMapIntensity: 1.2,
   });
   const w = type.width,
     l = type.length,
@@ -380,6 +449,13 @@ export function createCar(type, color, rim = 1) {
       bodyGroup.add(wheel);
       wheels.push(wheel);
     }
+  for (const side of [-1, 1]) {
+    const decal = new THREE.Mesh(decalGeometry, decalMaterial);
+    decal.scale.set(1.7, 1.7, 1.7);
+    decal.rotation.y = (side * Math.PI) / 2;
+    decal.position.set(side * (w / 2 + 0.012), ride + 0.05, -0.1);
+    bodyGroup.add(decal);
+  }
   const glow = new THREE.PointLight(color, 16, 7, 2);
   glow.position.set(0, 0.3, 0);
   root.add(glow);
@@ -399,16 +475,26 @@ export function createCar(type, color, rim = 1) {
   }
   flames.visible = false;
   root.add(flames);
-  root.userData = { bodyGroup, wheels, glow, paint, headlight, flames };
+  root.userData = {
+    bodyGroup,
+    wheels,
+    glow,
+    paint,
+    headlight,
+    flames,
+    dimensions: { width: w, length: l },
+  };
   return root;
 }
 export function disposeCar(car) {
   const materials = new Set(),
     geometries = new Set();
   car.traverse((o) => {
+    if (o.isLight && o.shadow?.map) o.shadow.map.dispose();
     if (o.isMesh) {
-      if (o.geometry !== unit) geometries.add(o.geometry);
-      if (![chrome, rubber, glass].includes(o.material))
+      if (o.geometry !== unit && o.geometry !== decalGeometry)
+        geometries.add(o.geometry);
+      if (![chrome, rubber, glass, decalMaterial].includes(o.material))
         materials.add(o.material);
     }
   });
@@ -422,6 +508,7 @@ export function getDistrict(x, z) {
   if (x < -450 || z < -470) return "BAYOU / BACKROAD LEVEES";
   if (z > 140 && x > 0) return "WAREHOUSE DISTRICT";
   if (z > 90 && x < 0) return "TREMÉ";
+  if (x > 150 && z < -140) return "NEW ORLEANS EAST";
   if (z < -140) return "ST. CLAUDE AVENUE";
   return "FRENCH QUARTER";
 }

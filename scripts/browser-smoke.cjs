@@ -13,7 +13,7 @@ let browser;
     ],
   });
   const page = await browser.newPage({
-    viewport: { width: 800, height: 600 },
+    viewport: { width: 390, height: 844 },
   });
   page.setDefaultTimeout(60000);
   const errors = [];
@@ -27,7 +27,8 @@ let browser;
   console.log("Title rendered");
   assert.equal(await page.locator("#start").isVisible(), true);
   await page.click("#start");
-  await page.click("#quality");
+  if ((await page.locator("#quality").getAttribute("aria-pressed")) === "true")
+    await page.click("#quality");
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.keyboard.down("w");
   await page.waitForTimeout(3500);
@@ -35,6 +36,47 @@ let browser;
   assert.ok(
     Number(await page.locator("#speed").innerText()) > 0,
     "car accelerates",
+  );
+  await page.keyboard.press("c");
+  assert.equal(
+    await page.locator("#camera-toggle").getAttribute("aria-pressed"),
+    "true",
+  );
+  await page.waitForTimeout(1000);
+  await page.screenshot({ path: join(tmpdir(), "crescent-city-cockpit.png") });
+  await page.keyboard.press("c");
+  assert.equal(
+    await page.locator("#camera-toggle").getAttribute("aria-pressed"),
+    "false",
+  );
+  await page.keyboard.press("m");
+  assert.equal(await page.locator("#phone").isVisible(), true);
+  const wav = Buffer.alloc(8044);
+  wav.write("RIFF", 0);
+  wav.writeUInt32LE(8036, 4);
+  wav.write("WAVEfmt ", 8);
+  wav.writeUInt32LE(16, 16);
+  wav.writeUInt16LE(1, 20);
+  wav.writeUInt16LE(1, 22);
+  wav.writeUInt32LE(8000, 24);
+  wav.writeUInt32LE(16000, 28);
+  wav.writeUInt16LE(2, 32);
+  wav.writeUInt16LE(16, 34);
+  wav.write("data", 36);
+  wav.writeUInt32LE(8000, 40);
+  await page.locator("#music-files").setInputFiles({
+    name: "authorized-test-tone.wav",
+    mimeType: "audio/wav",
+    buffer: wav,
+  });
+  await page.waitForFunction(
+    () => document.getElementById("playlist").children.length === 1,
+  );
+  await page.click('[data-close="phone"]');
+  assert.ok(
+    (await page.locator("#radar-coordinates").innerText()).includes(
+      "8 SECTORS",
+    ),
   );
   await page.click("#garage-button");
   await page.getByRole("button", { name: "Bayou Tuner" }).click();
@@ -57,6 +99,9 @@ let browser;
     await page.locator("#mission-title").innerText(),
     "Flash Flood Escape",
   );
+  await page.waitForFunction(() =>
+    document.getElementById("heat").textContent.includes("★"),
+  );
   await page.locator('[data-ability="zone"]').click();
   await page.waitForTimeout(500);
   await page.waitForFunction(
@@ -78,10 +123,11 @@ let browser;
   );
   await page.click("#audio");
   await page.screenshot({ path: join(tmpdir(), "crescent-city-gameplay.png") });
-  await page.setViewportSize({ width: 800, height: 600 });
+  await page.setViewportSize({ width: 390, height: 844 });
   await page.reload();
   await page.click("#start");
-  await page.click("#quality");
+  if ((await page.locator("#quality").getAttribute("aria-pressed")) === "true")
+    await page.click("#quality");
   await page.click("#garage-button");
   assert.equal(await page.locator("#stance").inputValue(), "2");
   await page.click('[data-close="garage"]');
@@ -97,9 +143,24 @@ let browser;
   await page.waitForFunction(
     () => Number(document.getElementById("speed").textContent) > 0,
   );
+  const stick = await page.locator("#joystick").boundingBox();
+  await page.mouse.move(stick.x + stick.width / 2, stick.y + stick.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(stick.x + stick.width - 4, stick.y + stick.height / 2);
+  assert.ok(
+    Number(await page.locator("#joystick").getAttribute("aria-valuenow")) > 0,
+  );
+  await page.locator("#joystick").dispatchEvent("pointercancel");
+  await page.mouse.up();
+  assert.equal(
+    await page.locator("#joystick").getAttribute("aria-valuenow"),
+    "0",
+  );
+  await page.click("#exit-driving");
+  assert.equal(await page.locator("#pause-menu").isVisible(), true);
   assert.deepEqual(errors, [], "no browser runtime errors");
   console.log(
-    "PASS desktop: launch, acceleration, garage, upgrade, persistence, mission, ability, abandon, waypoint, pause; mobile: layout and controls visible.",
+    "PASS: driving, cockpit/mirror, phone/local WAV playlist, garage/upgrades/save reload, mission/wanted stars, ability, waypoint, pause/audio, mobile gas, joystick cancel reset and exit driving.",
   );
   await browser.close();
 })().catch(async (e) => {

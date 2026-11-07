@@ -179,11 +179,15 @@ export function stepCar(
   let impact = 0;
   const nx = car.x + car.vx * t,
     nz = car.z + car.vz * t;
-  if (collide(nx, nz, boxes)) {
+  const hits = (x, z) =>
+    typeof boxes === "function"
+      ? boxes(x, z, car.heading, vehicle.width, vehicle.length)
+      : collide(x, z, boxes);
+  if (hits(nx, nz)) {
     impact = Math.hypot(car.vx, car.vz);
     // Resolve independently to allow sliding along a facade.
-    if (!collide(nx, car.z, boxes)) car.x = nx;
-    if (!collide(car.x, nz, boxes)) car.z = nz;
+    if (!hits(nx, car.z)) car.x = nx;
+    if (!hits(car.x, nz)) car.z = nz;
     car.speed *= -0.24;
     car.vx *= -0.3;
     car.vz *= -0.3;

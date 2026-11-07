@@ -60,7 +60,10 @@
       <nav class="top-actions">
         <button id="garage-button">GARAGE <kbd>G</kbd></button
         ><button id="missions-button">RACE BOARD <kbd>R</kbd></button
-        ><button id="map-button">MAP <kbd>M</kbd></button
+        ><button id="map-button">MAP <kbd>V</kbd></button
+        ><button id="camera-toggle" aria-pressed="false">
+          COCKPIT <kbd>C</kbd></button
+        ><button id="phone-button">PHONE <kbd>M</kbd></button
         ><button id="audio" aria-pressed="false">SOUND OFF</button
         ><button id="quality" aria-pressed="true">FX HIGH</button
         ><button id="recover" aria-label="Recover car" title="Recover car">
@@ -93,9 +96,10 @@
             aria-label="City map. Click to set a waypoint."
             tabindex="0"
           ></canvas>
+          <p id="radar-coordinates" class="radar-coordinates">X 0 / Z 20</p>
           <div class="map-legend">
             <i class="cyan"></i>YOU <i class="gold"></i>CHECKPOINT
-            <i class="red"></i>POLICE
+            <i class="red"></i>POLICE · ◆ SAFEHOUSE · B BOSS
           </div>
         </div>
         <div class="status-bars">
@@ -123,7 +127,7 @@
         </p>
       </div>
       <div class="speedometer">
-        <div id="heat">○ ○ ○ ○ ○</div>
+        <button id="heat" aria-label="Wanted level details">☆ ☆ ☆ ☆ ☆</button>
         <div><b id="speed">000</b><span>MPH</span></div>
         <p>
           <span id="gear">N</span> <span id="car-name">CRESCENT CLASSIC</span>
@@ -131,15 +135,29 @@
         <small id="zone-status">EASTBANK UNDERGROUND</small>
       </div>
       <div id="touch">
-        <div class="touch-steer">
-          <button data-key="a" aria-label="Steer left">◀</button
-          ><button data-key="d" aria-label="Steer right">▶</button>
+        <div class="steering-controls">
+          <div
+            id="joystick"
+            role="slider"
+            tabindex="0"
+            aria-label="Steering thumbstick"
+            aria-valuemin="-100"
+            aria-valuemax="100"
+            aria-valuenow="0"
+          >
+            <span id="joystick-knob"></span>
+          </div>
+          <div class="touch-steer">
+            <button data-key="a" aria-label="Steer left">◀</button
+            ><button data-key="d" aria-label="Steer right">▶</button>
+          </div>
         </div>
         <div class="touch-pedals">
           <button data-key=" " aria-label="Handbrake">DRIFT</button
           ><button data-key="shift" aria-label="Nitrous">N₂O</button
-          ><button data-key="s" aria-label="Reverse">REV</button
-          ><button data-key="w" aria-label="Accelerate">GAS</button>
+          ><button data-key="s" aria-label="Brake and reverse">BRAKE</button
+          ><button data-key="w" aria-label="Accelerate">GAS</button
+          ><button id="exit-driving" aria-label="Exit driving">F / EXIT</button>
         </div>
       </div>
     </main>
@@ -209,7 +227,8 @@
       <p>
         WASD / arrows — drive · Shift — nitrous<br />Space — drift · H —
         hydraulics<br />1 / 2 / 3 — abilities · T — recover<br />G — garage · R
-        — race board · M — map<br />Escape / P — pause
+        — race board · V — map<br />C — cockpit · M — phone · F — exit
+        driving<br />Escape / P — pause
       </p>
       <p class="muted">
         Original fictional vehicles. Inspired by New Orleans, not a surveyed
@@ -218,6 +237,44 @@
       <button data-close="pause-menu" class="primary">
         BACK TO THE STREETS ↗
       </button>
+    </dialog>
+    <dialog id="phone" class="panel small-panel">
+      <div class="panel-top">
+        <div>
+          <p class="eyebrow">LEVEL 29 / NIGHTLINE</p>
+          <h2>Soundtrack your city.</h2>
+        </div>
+        <button data-close="phone" aria-label="Close phone">✕</button>
+      </div>
+      <p class="muted">
+        No official recordings are bundled. Add your own authorized instrumental
+        files to play locally while driving. Files stay on your device; reselect
+        them after reload.
+      </p>
+      <label class="file-label"
+        >ADD TRACKS
+        <input id="music-files" type="file" accept="audio/*" multiple
+      /></label>
+      <ol id="playlist"></ol>
+      <audio id="music-player" controls preload="metadata"></audio>
+      <label class="music-volume"
+        >Music volume
+        <input
+          id="music-volume"
+          type="range"
+          min="0"
+          max="1"
+          step=".05"
+          value=".5"
+      /></label>
+      <p id="music-status" role="status">
+        Select audio files to build a playlist.
+      </p>
+      <button id="music-next">NEXT TRACK ↗</button>
+      <p class="muted">
+        Music continues when you close the phone. Pausing the city or hiding the
+        page pauses playback.
+      </p>
     </dialog>
     <script type="module" src="/src/main.js"></script>
   </body>
