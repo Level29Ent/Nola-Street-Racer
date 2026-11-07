@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Level 29 Ent: NOLA AAA Street Racer</title>
+    <title>Level 29 Ent: NOLA Underground - 8 Territories & Boss Turf Wars</title>
     <style>
         body {
             margin: 0;
             overflow: hidden;
-            background-color: #030308;
+            background-color: #020205;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             user-select: none;
         }
@@ -19,27 +19,29 @@
             color: #00ffcc;
             text-shadow: 0 0 10px rgba(0, 255, 204, 0.7);
             pointer-events: none;
+            z-index: 10;
         }
-        h1 { margin: 0 0 5px 0; font-size: 24px; letter-spacing: 2px; }
-        p { margin: 0; color: #ff007f; font-weight: bold; font-size: 16px; text-shadow: 0 0 8px rgba(255, 0, 127, 0.7); }
+        h1 { margin: 0 0 5px 0; font-size: 22px; letter-spacing: 2px; }
+        p { margin: 0; color: #ff007f; font-weight: bold; font-size: 15px; text-shadow: 0 0 8px rgba(255, 0, 127, 0.7); }
         
+        /* HUD & Modal Panels */
         .hud-panel {
             position: absolute;
-            background: rgba(10, 10, 25, 0.95);
+            background: rgba(10, 10, 25, 0.96);
             border: 2px solid #00ffcc;
-            box-shadow: 0 0 20px rgba(0, 255, 204, 0.4);
-            border-radius: 8px;
+            box-shadow: 0 0 25px rgba(0, 255, 204, 0.5);
+            border-radius: 10px;
             color: white;
-            padding: 20px;
+            padding: 25px;
             display: none;
             z-index: 100;
         }
-        #dealership-modal, #garage-modal {
+        #dealership-modal, #territory-modal, #garage-modal {
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            width: 750px;
-            max-height: 80vh;
+            width: 780px;
+            max-height: 82vh;
             overflow-y: auto;
         }
         .modal-header {
@@ -47,35 +49,36 @@
             justify-content: space-between;
             align-items: center;
             border-bottom: 1px solid #333;
-            padding-bottom: 10px;
-            margin-bottom: 15px;
+            padding-bottom: 12px;
+            margin-bottom: 18px;
         }
-        .car-grid {
+        .car-grid, .territory-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 12px;
+            gap: 15px;
         }
-        .car-card {
-            background: rgba(20, 20, 35, 0.95);
+        .car-card, .territory-card {
+            background: rgba(20, 20, 40, 0.95);
             border: 1px solid #ff007f;
-            padding: 12px;
-            border-radius: 6px;
+            padding: 15px;
+            border-radius: 8px;
             text-align: center;
+            box-shadow: 0 0 10px rgba(255, 0, 127, 0.2);
         }
-        .car-card h3 { margin: 0 0 5px 0; color: #00ffcc; font-size: 16px; }
-        .car-card p { font-size: 13px; color: #bbb; margin-bottom: 8px; }
+        .car-card h3, .territory-card h3 { margin: 0 0 6px 0; color: #00ffcc; font-size: 17px; }
+        .car-card p, .territory-card p { font-size: 13px; color: #ccc; margin-bottom: 10px; }
         .btn {
             background: #ff007f;
             color: white;
             border: none;
-            padding: 8px 14px;
+            padding: 9px 16px;
             font-weight: bold;
-            border-radius: 4px;
+            border-radius: 5px;
             cursor: pointer;
-            box-shadow: 0 0 10px rgba(255, 0, 127, 0.8);
+            box-shadow: 0 0 12px rgba(255, 0, 127, 0.8);
             transition: 0.2s;
         }
-        .btn:hover { background: #ff3399; box-shadow: 0 0 15px rgba(255, 51, 153, 1); }
+        .btn:hover { background: #ff3399; box-shadow: 0 0 18px rgba(255, 51, 153, 1); }
         
         #menu-bar {
             position: absolute;
@@ -83,18 +86,19 @@
             width: 100%;
             text-align: center;
             pointer-events: auto;
+            z-index: 10;
         }
         .menu-btn {
-            background: rgba(10, 10, 20, 0.9);
+            background: rgba(10, 10, 25, 0.92);
             border: 2px solid #00ffcc;
             color: #00ffcc;
-            padding: 10px 20px;
-            font-size: 16px;
+            padding: 10px 18px;
+            font-size: 15px;
             font-weight: bold;
-            margin: 0 10px;
+            margin: 0 6px;
             border-radius: 6px;
             cursor: pointer;
-            box-shadow: 0 0 12px rgba(0, 255, 204, 0.5);
+            box-shadow: 0 0 12px rgba(0, 255, 204, 0.4);
         }
         .menu-btn:hover { background: #00ffcc; color: #000; }
         #controls-hint {
@@ -102,25 +106,38 @@
             bottom: 85px;
             width: 100%;
             text-align: center;
-            color: #ccc;
+            color: #ddd;
             font-size: 14px;
             pointer-events: none;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.9);
+            text-shadow: 0 2px 5px rgba(0,0,0,0.9);
+            z-index: 10;
         }
     </style>
 </head>
 <body>
     <div id="ui">
-        <h1>LEVEL 29 ENT: NOLA AAA</h1>
+        <h1>LEVEL 29 ENT: NOLA TURF WARS</h1>
         <p id="speedometer">SPEED: 0 MPH</p>
         <p id="bank-balance" style="color: #00ffcc; margin-top: 5px;">BANK: $50,000</p>
+        <p id="territory-status" style="color: #ffaa00; margin-top: 5px;">TERRITORIES OWNED: 0 / 8</p>
     </div>
 
-    <div id="controls-hint">Use <b>W / A / S / D</b> to Drive | <b>SPACE</b> to Drift | Open Dealership & Garage below</div>
+    <div id="controls-hint">Use <b>W / A / S / D</b> to Drive | <b>SPACE</b> to Drift | Manage Territories & Dealership Below</div>
 
     <div id="menu-bar">
-        <button class="menu-btn" onclick="toggleModal('dealership-modal')">🚗 100-CAR DEALERSHIP</button>
-        <button class="menu-btn" onclick="toggleModal('garage-modal')">🛠️ UPGRADE GARAGE</button>
+        <button class="menu-btn" onclick="toggleModal('territory-modal')">🗺️ 8 TERRITORY CREWS</button>
+        <button class="menu-btn" onclick="toggleModal('dealership-modal')">🚗 100-CAR SHOWROOM</button>
+        <button class="menu-btn" onclick="toggleModal('garage-modal')">🛠️ TUNING WORKSHOP</button>
+    </div>
+
+    <!-- 8 TERRITORY CREWS & BOSSES MODAL -->
+    <div id="territory-modal" class="hud-panel">
+        <div class="modal-header">
+            <h2 style="margin:0; color:#00ffcc;">New Orleans 8 Turf Sectors & Crew Bosses</h2>
+            <button class="btn" onclick="toggleModal('territory-modal')">✕</button>
+        </div>
+        <p style="margin-bottom:15px; font-size:13px; color:#aaa;">Defeat the 3 street racers in each sector to unlock and challenge the Crew Boss for territory ownership and massive payouts!</p>
+        <div class="territory-grid" id="territory-grid"></div>
     </div>
 
     <!-- 100-CAR DEALERSHIP MODAL -->
@@ -129,7 +146,6 @@
             <h2 style="margin:0; color:#00ffcc;">St. Claude Motors: 100-Car Showroom</h2>
             <button class="btn" onclick="toggleModal('dealership-modal')">✕</button>
         </div>
-        <p style="margin-bottom:15px; font-size:13px; color:#aaa;">Choose from 100 authentic custom street racing builds.</p>
         <div class="car-grid" id="dealership-grid"></div>
     </div>
 
@@ -145,7 +161,7 @@
                 <button class="btn" onclick="game.upgradeCar('Twin Turbo Kit', 5000, 0.15)">Upgrade Twin Turbo (+30 MPH Top Speed) - $5,000</button>
                 <button class="btn" onclick="game.setCarColor(0xff0055, 0.1, 0.9)">Apply Candy Neon Pink Finish - $1,500</button>
                 <button class="btn" onclick="game.setCarColor(0x00ffff, 0.1, 0.9)">Apply Electric Cyan Finish - $1,500</button>
-                <button class="btn" onclick="game.upgradeCar('Hydraulics & Spinner Rims', 8000, 0.25)">Install Hydraulics & 30" Spinners - $8,000</button>
+                <button class="btn" onclick="game.upgradeCar('Hydraulics & 30\" Spinners', 8000, 0.25)">Install Hydraulics & Spinners - $8,000</button>
             </div>
         </div>
     </div>
@@ -161,12 +177,14 @@
         class NolaStreetRacerGame {
             constructor() {
                 this.playerMoney = 50000;
-                this.maxSpeedKmh = 180; // Realistic street racing top speed in units
+                this.territoriesOwned = 0;
                 this.currentMaxSpeed = 0.8;
                 this.generateCatalog();
+                this.generateTerritories();
                 this.initThree();
                 this.initControls();
                 this.populateDealershipUI();
+                this.populateTerritoriesUI();
                 
                 this.animate = this.animate.bind(this);
                 this.animate();
@@ -185,214 +203,33 @@
                 }
             }
 
-            initThree() {
-                this.scene = new THREE.Scene();
-                this.scene.background = new THREE.Color(0x04040c);
-                this.scene.fog = new THREE.FogExp2(0x04040c, 0.006);
-
-                this.camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 1200);
-                this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
-                this.renderer.setSize(window.innerWidth, window.innerHeight);
-                this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-                this.renderer.shadowMap.enabled = true;
-                this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-                document.body.appendChild(this.renderer.domElement);
-
-                // Lighting
-                const ambientLight = new THREE.AmbientLight(0x222244, 2.0);
-                this.scene.add(ambientLight);
-
-                const overheadLight = new THREE.DirectionalLight(0x5588ff, 2.5);
-                overheadLight.position.set(30, 60, 30);
-                overheadLight.castShadow = true;
-                this.scene.add(overheadLight);
-
-                // NOLA French Quarter Streetlights & Glowing Neon Facades
-                for (let i = -600; i <= 600; i += 40) {
-                    const color = i % 80 === 0 ? 0x00ffff : 0xff007f;
-                    const pole = new THREE.Mesh(
-                        new THREE.CylinderGeometry(0.15, 0.2, 14, 8),
-                        new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.3, metalness: 0.8 })
-                    );
-                    pole.position.set(11, 7, i);
-                    this.scene.add(pole);
-
-                    const bulbLight = new THREE.PointLight(color, 4, 30);
-                    bulbLight.position.set(11, 13, i);
-                    this.scene.add(bulbLight);
-                }
-
-                // Road Setup (Width 22, perfectly scaled for car physics)
-                const road = new THREE.Mesh(
-                    new THREE.PlaneGeometry(22, 1400),
-                    new THREE.MeshStandardMaterial({ color: 0x16161c, roughness: 0.5, metalness: 0.1 })
-                );
-                road.rotation.x = -Math.PI / 2;
-                road.receiveShadow = true;
-                this.scene.add(road);
-
-                // Center Stripes
-                for (let i = -680; i <= 680; i += 12) {
-                    const stripe = new THREE.Mesh(
-                        new THREE.PlaneGeometry(0.4, 5),
-                        new THREE.MeshBasicMaterial({ color: 0x00ffcc })
-                    );
-                    stripe.rotation.x = -Math.PI / 2;
-                    stripe.position.set(0, 0.04, i);
-                    this.scene.add(stripe);
-                }
-
-                // Close-Up New Orleans Skyline & French Quarter Buildings
-                const bldMat = new THREE.MeshStandardMaterial({ color: 0x12121f, roughness: 0.7 });
-                const windowGlowMat = new THREE.MeshBasicMaterial({ color: 0xffaa22 });
-
-                for (let i = -650; i <= 650; i += 28) {
-                    [-18, 18].forEach(xPos => {
-                        const h = 35 + Math.random() * 55;
-                        const bld = new THREE.Mesh(new THREE.BoxGeometry(14, h, 24), bldMat);
-                        bld.position.set(xPos, h / 2, i);
-                        bld.castShadow = true;
-                        bld.receiveShadow = true;
-                        this.scene.add(bld);
-
-                        // Add glowing windows on building facades facing the street
-                        const windowStrip = new THREE.Mesh(new THREE.PlaneGeometry(8, h * 0.7), windowGlowMat);
-                        windowStrip.position.set(xPos > 0 ? xPos - 7.01 : xPos + 7.01, h / 2, i);
-                        windowStrip.rotation.y = xPos > 0 ? -Math.PI / 2 : Math.PI / 2;
-                        this.scene.add(windowStrip);
+            generateTerritories() {
+                const sectorNames = [
+                    "1. French Quarter (Historic District)",
+                    "2. Tremé Underground",
+                    "3. St. Claude Industrial Corridor",
+                    "4. Warehouse District Docks",
+                    "5. I-10 Twin Span Highway",
+                    "6. Uptown Garden District",
+                    "7. Algiers Point Riverside",
+                    "8. New Orleans East Bayou"
+                ];
+                const bossNames = ["'Vieux Carré' Vance", "Tuba Tone", "'Gator' Gauthier", "Captain Roux", "Bridge King Marcus", "Madame LaLaurie", "Delta Dawg", "Swamp Reaper"];
+                
+                this.territories = [];
+                for (let i = 0; i < 8; i++) {
+                    this.territories.push({
+                        id: i,
+                        name: sectorNames[i],
+                        boss: bossNames[i],
+                        racesBeaten: 0,
+                        owned: false,
+                        reward: 25000 + (i * 10000)
                     });
                 }
-
-                // Player Car
-                this.carGroup = new THREE.Group();
-                this.bodyMat = new THREE.MeshStandardMaterial({ color: 0x8800ff, roughness: 0.15, metalness: 0.85 });
-                this.carBodyMesh = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.65, 4.4), this.bodyMat);
-                this.carBodyMesh.position.y = 0.6;
-                this.carBodyMesh.castShadow = true;
-                this.carGroup.add(this.carBodyMesh);
-
-                const cabin = new THREE.Mesh(
-                    new THREE.BoxGeometry(1.6, 0.55, 2.2),
-                    new THREE.MeshStandardMaterial({ color: 0x08080c, roughness: 0.05, metalness: 0.9, transparent: true, opacity: 0.9 })
-                );
-                cabin.position.set(0, 1.15, -0.2);
-                this.carGroup.add(cabin);
-
-                const wheelGeo = new THREE.CylinderGeometry(0.38, 0.38, 0.4, 24);
-                wheelGeo.rotateZ(Math.PI / 2);
-                const wheelMat = new THREE.MeshStandardMaterial({ color: 0x151515, roughness: 0.2, metalness: 0.9 });
-                
-                [[-1.1, 0.38, 1.35], [1.1, 0.38, 1.35], [-1.1, 0.38, -1.35], [1.1, 0.38, -1.35]].forEach(pos => {
-                    const wheel = new THREE.Mesh(wheelGeo, wheelMat);
-                    wheel.position.set(...pos);
-                    this.carGroup.add(wheel);
-                });
-
-                this.scene.add(this.carGroup);
-                this.carGroup.position.set(0, 0, 200);
-
-                this.speed = 0;
-                this.carAngle = 0;
             }
 
-            initControls() {
-                this.keys = { forward: false, backward: false, left: false, right: false, drift: false };
-                window.addEventListener('keydown', (e) => this.updateKeys(e, true));
-                window.addEventListener('keyup', (e) => this.updateKeys(e, false));
-            }
-
-            updateKeys(e, isDown) {
-                switch(e.key.toLowerCase()) {
-                    case 'w': case 'arrowup': this.keys.forward = isDown; break;
-                    case 's': case 'arrowdown': this.keys.backward = isDown; break;
-                    case 'a': case 'arrowleft': this.keys.left = isDown; break;
-                    case 'd': case 'arrowright': this.keys.right = isDown; break;
-                    case ' ': this.keys.drift = isDown; break;
-                }
-            }
-
-            populateDealershipUI() {
-                const grid = document.getElementById('dealership-grid');
-                grid.innerHTML = '';
-                this.catalog.forEach(car => {
-                    const card = document.createElement('div');
-                    card.className = 'car-card';
-                    card.innerHTML = `
-                        <h3>${car.name}</h3>
-                        <p>Price: $${car.price.toLocaleString()} | Tier ${car.id}</p>
-                        <button class="btn" id="buy-car-${car.id}">Buy Ride</button>
-                    `;
-                    grid.appendChild(card);
-                    setTimeout(() => {
-                        const btn = document.getElementById(`buy-car-${car.id}`);
-                        if (btn) btn.onclick = () => this.buyCar(car);
-                    }, 0);
-                });
-            }
-
-            buyCar(car) {
-                if (this.playerMoney >= car.price) {
-                    this.playerMoney -= car.price;
-                    this.currentMaxSpeed = car.topSpeed;
-                    document.getElementById('bank-balance').innerText = `BANK: $${this.playerMoney.toLocaleString()}`;
-                    document.getElementById('current-car-name').innerText = car.name;
-                    alert(`Successfully purchased and deployed ${car.name}!`);
-                    toggleModal('dealership-modal');
-                } else {
-                    alert("Not enough cash in your bank balance!");
-                }
-            }
-
-            upgradeCar(name, cost, speedBoost) {
-                if (this.playerMoney >= cost) {
-                    this.playerMoney -= cost;
-                    this.currentMaxSpeed += speedBoost;
-                    document.getElementById('bank-balance').innerText = `BANK: $${this.playerMoney.toLocaleString()}`;
-                    alert(`Installed ${name}! Performance upgraded.`);
-                    toggleModal('garage-modal');
-                } else {
-                    alert("Insufficient funds for this upgrade package.");
-                }
-            }
-
-            setCarColor(hex, roughness, metalness) {
-                this.bodyMat.color.setHex(hex);
-                this.bodyMat.roughness = roughness;
-                this.bodyMat.metalness = metalness;
-                alert("Custom candy paint finish applied!");
-                toggleModal('garage-modal');
-            }
-
-            animate() {
-                requestAnimationFrame(this.animate);
-
-                const acceleration = 0.012;
-                const deceleration = 0.008;
-                const turnSpeed = 0.045;
-
-                if (this.keys.forward) this.speed = Math.min(this.speed + acceleration, this.currentMaxSpeed);
-                else if (this.keys.backward) this.speed = Math.max(this.speed - acceleration, -this.currentMaxSpeed / 3);
-                else {
-                    if (this.speed > 0) this.speed = Math.max(this.speed - deceleration, 0);
-                    if (this.speed < 0) this.speed = Math.min(this.speed + deceleration, 0);
-                }
-
-                let currentTurn = turnSpeed;
-                if (this.keys.drift) currentTurn *= 1.6;
-
-                if (Math.abs(this.speed) > 0.03) {
-                    if (this.keys.left) { this.carAngle += currentTurn * Math.sign(this.speed); this.carGroup.rotation.y = this.carAngle; }
-                    if (this.keys.right) { this.carAngle -= currentTurn * Math.sign(this.speed); this.carGroup.rotation.y = this.carAngle; }
-                }
-
-                this.carGroup.position.x += Math.sin(this.carAngle) * this.speed;
-                this.carGroup.position.z += Math.cos(this.carAngle) * this.speed;
-
-                // Infinite road looping
-                if (this.carGroup.position.z < -600) this.carGroup.position.z = 600;
-                if (this.carGroup.position.z > 600) this.carGroup.position.z = -600;
-                this.carGroup.position.x = Math.max(Math.min(this.carGroup.position.x, 9.5), -9.5);
-
-                // Cinematic Chase Camera
-                const targetX = this.carGroup.position.x - Math.sin(this.carAngle) * 11;
-                const target
+            initThree() {
+                this.scene = new THREE.Scene();
+                this.scene.background = new THREE.Color(0x020208);
+                this.scene
