@@ -99,8 +99,8 @@ let browser;
     await page.locator("#mission-title").innerText(),
     "Flash Flood Escape",
   );
-  await page.waitForFunction(() =>
-    document.getElementById("heat").textContent.includes("★"),
+  await page.waitForFunction(
+    () => Number(document.getElementById("heat").dataset.level) > 0,
   );
   await page.locator('[data-ability="zone"]').click();
   await page.waitForTimeout(500);

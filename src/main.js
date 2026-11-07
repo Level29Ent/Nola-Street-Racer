@@ -43,6 +43,13 @@ import {
   loadSave,
 } from "./simulation.js";
 const $ = (id) => document.getElementById(id);
+const wantedStars = Array.from({ length: 5 }, () => {
+  const s = document.createElement("span");
+  s.className = "wanted-star";
+  s.setAttribute("aria-hidden", "true");
+  return s;
+});
+$("heat").replaceChildren(...wantedStars);
 let renderer;
 try {
   renderer = new THREE.WebGLRenderer({
@@ -1214,9 +1221,9 @@ function updateGameplay(dt) {
   $("health").value = car.health;
   $("health-value").textContent = `${Math.round(car.health)}%`;
   $("nitro").value = car.nitro;
-  $("heat").textContent = Array.from({ length: 5 }, (_, i) =>
-    i < Math.floor(heat) ? "★" : "☆",
-  ).join(" ");
+  wantedStars.forEach((star, i) => star.classList.toggle("active", i < heat));
+  $("heat").dataset.level = String(heat);
+  $("heat").setAttribute("aria-label", `Wanted level ${heat} of 5. Details`);
   $("zone-status").textContent =
     active.zone > 0
       ? "ZONE / TIME DILATION"

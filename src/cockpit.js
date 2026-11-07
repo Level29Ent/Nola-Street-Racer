@@ -66,6 +66,12 @@ export function createCockpit(scene, camera, renderer, mobile) {
     },
     update(car, input) {
       dash.visible = enabled;
+      const fit = Math.min(1, camera.aspect);
+      wheel.scale.set(fit, fit, 1);
+      wheel.position.x = -0.3 * fit;
+      gauge.scale.set(fit, fit, 1);
+      gauge.position.x = 0.1 * fit;
+      mirror.scale.set(-fit, fit, 1);
       wheel.rotation.z = -input.steer * 0.7;
       const mph = Math.round(Math.abs(car.speed) * 2.237);
       if (lastSpeed !== mph) {

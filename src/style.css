@@ -1172,3 +1172,47 @@ body.cockpit .speedometer {
   border: 0;
   pointer-events: auto;
 }
+#heat {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+.wanted-star {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  clip-path: polygon(
+    50% 0%,
+    61% 35%,
+    98% 35%,
+    68% 57%,
+    79% 95%,
+    50% 72%,
+    21% 95%,
+    32% 57%,
+    2% 35%,
+    39% 35%
+  );
+  background: #5a5969;
+}
+.wanted-star.active {
+  background: #ff6376;
+  filter: drop-shadow(0 0 5px #ff3355);
+}
+@media (max-width: 600px) {
+  .bottom-center,
+  body.touch .bottom-center {
+    bottom: 18px;
+    left: 14px;
+    right: auto;
+    transform: none;
+  }
+  .abilities button {
+    font-size: 6px;
+    padding: 6px;
+  }
+  .wanted-star {
+    width: 12px;
+    height: 12px;
+  }
+}
