@@ -8,7 +8,7 @@
         body {
             margin: 0;
             overflow: hidden;
-            background-color: #010104;
+            background-color: #050510;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             user-select: none;
         }
@@ -25,7 +25,7 @@
         
         .hud-panel {
             position: absolute;
-            background: rgba(10, 10, 20, 0.95);
+            background: rgba(10, 10, 25, 0.95);
             border: 2px solid #00ffcc;
             box-shadow: 0 0 20px rgba(0, 255, 204, 0.4);
             border-radius: 8px;
@@ -186,8 +186,8 @@
 
             initThree() {
                 this.scene = new THREE.Scene();
-                this.scene.background = new THREE.Color(0x020206);
-                this.scene.fog = new THREE.FogExp2(0x020206, 0.010);
+                this.scene.background = new THREE.Color(0x0a0a1a);
+                this.scene.fog = new THREE.FogExp2(0x0a0a1a, 0.008);
 
                 this.camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
                 this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
@@ -197,26 +197,26 @@
                 this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
                 document.body.appendChild(this.renderer.domElement);
 
-                // AAA Lighting
-                const ambientLight = new THREE.AmbientLight(0x0d0d1a, 2.0);
+                // Brightened AAA Lighting
+                const ambientLight = new THREE.AmbientLight(0x333355, 2.5);
                 this.scene.add(ambientLight);
 
-                const moonLight = new THREE.DirectionalLight(0x4060ff, 2.5);
-                moonLight.position.set(40, 80, 40);
-                moonLight.castShadow = true;
-                this.scene.add(moonLight);
+                const overheadLight = new THREE.DirectionalLight(0xffffff, 2.0);
+                overheadLight.position.set(20, 50, 20);
+                overheadLight.castShadow = true;
+                this.scene.add(overheadLight);
 
-                // NOLA Neon Streetlights
+                // Neon Streetlights & Buildings
                 for (let i = -350; i <= 350; i += 35) {
                     const color = i % 70 === 0 ? 0x00ffff : 0xff007f;
                     const pole = new THREE.Mesh(
                         new THREE.CylinderGeometry(0.15, 0.2, 14, 8),
-                        new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.4, metalness: 0.8 })
+                        new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.3, metalness: 0.8 })
                     );
                     pole.position.set(15, 7, i);
                     this.scene.add(pole);
 
-                    const bulbLight = new THREE.PointLight(color, 4, 30);
+                    const bulbLight = new THREE.PointLight(color, 5, 35);
                     bulbLight.position.set(15, 13, i);
                     this.scene.add(bulbLight);
                 }
@@ -224,7 +224,7 @@
                 // Road & Architecture
                 const road = new THREE.Mesh(
                     new THREE.PlaneGeometry(30, 900),
-                    new THREE.MeshStandardMaterial({ color: 0x111115, roughness: 0.3, metalness: 0.2 })
+                    new THREE.MeshStandardMaterial({ color: 0x222228, roughness: 0.4, metalness: 0.1 })
                 );
                 road.rotation.x = -Math.PI / 2;
                 road.receiveShadow = true;
@@ -232,12 +232,23 @@
 
                 for (let i = -420; i <= 420; i += 12) {
                     const stripe = new THREE.Mesh(
-                        new THREE.PlaneGeometry(0.4, 6),
+                        new THREE.PlaneGeometry(0.5, 6),
                         new THREE.MeshBasicMaterial({ color: 0x00ffcc })
                     );
                     stripe.rotation.x = -Math.PI / 2;
-                    stripe.position.set(0, 0.03, i);
+                    stripe.position.set(0, 0.05, i);
                     this.scene.add(stripe);
+                }
+
+                // Buildings on sides
+                const bldMat = new THREE.MeshStandardMaterial({ color: 0x1b1b2f, roughness: 0.6 });
+                for (let i = -400; i <= 400; i += 35) {
+                    [-28, 28].forEach(xPos => {
+                        const h = 30 + Math.random() * 40;
+                        const bld = new THREE.Mesh(new THREE.BoxGeometry(16, h, 24), bldMat);
+                        bld.position.set(xPos, h / 2, i);
+                        this.scene.add(bld);
+                    });
                 }
 
                 // Player Car
@@ -250,14 +261,14 @@
 
                 const cabin = new THREE.Mesh(
                     new THREE.BoxGeometry(1.8, 0.6, 2.4),
-                    new THREE.MeshStandardMaterial({ color: 0x050508, roughness: 0.05, metalness: 0.9, transparent: true, opacity: 0.8 })
+                    new THREE.MeshStandardMaterial({ color: 0x111115, roughness: 0.05, metalness: 0.9, transparent: true, opacity: 0.85 })
                 );
                 cabin.position.set(0, 1.25, -0.2);
                 this.carGroup.add(cabin);
 
                 const wheelGeo = new THREE.CylinderGeometry(0.42, 0.42, 0.45, 24);
                 wheelGeo.rotateZ(Math.PI / 2);
-                const wheelMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.2, metalness: 0.9 });
+                const wheelMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.2, metalness: 0.9 });
                 
                 [[-1.2, 0.42, 1.5], [1.2, 0.42, 1.5], [-1.2, 0.42, -1.5], [1.2, 0.42, -1.5]].forEach(pos => {
                     const wheel = new THREE.Mesh(wheelGeo, wheelMat);
