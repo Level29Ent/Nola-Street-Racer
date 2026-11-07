@@ -8,7 +8,7 @@
         body {
             margin: 0;
             overflow: hidden;
-            background-color: #050510;
+            background-color: #030308;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             user-select: none;
         }
@@ -142,10 +142,10 @@
         <div>
             <h3 style="color:#00ffcc;">Current Ride: <span id="current-car-name">1971 Chevy Impala Donk</span></h3>
             <div style="margin-top: 15px; display:flex; flex-direction:column; gap:10px;">
-                <button class="btn" onclick="game.upgradeCar('Twin Turbo Kit', 5000, 0.4)">Upgrade Twin Turbo (+50 Top Speed) - $5,000</button>
+                <button class="btn" onclick="game.upgradeCar('Twin Turbo Kit', 5000, 0.15)">Upgrade Twin Turbo (+30 MPH Top Speed) - $5,000</button>
                 <button class="btn" onclick="game.setCarColor(0xff0055, 0.1, 0.9)">Apply Candy Neon Pink Finish - $1,500</button>
                 <button class="btn" onclick="game.setCarColor(0x00ffff, 0.1, 0.9)">Apply Electric Cyan Finish - $1,500</button>
-                <button class="btn" onclick="game.upgradeCar('Hydraulics & Spinner Rims', 8000, 0.6)">Install Hydraulics & 30" Spinners - $8,000</button>
+                <button class="btn" onclick="game.upgradeCar('Hydraulics & Spinner Rims', 8000, 0.25)">Install Hydraulics & 30" Spinners - $8,000</button>
             </div>
         </div>
     </div>
@@ -161,7 +161,8 @@
         class NolaStreetRacerGame {
             constructor() {
                 this.playerMoney = 50000;
-                this.currentMaxSpeed = 1.3;
+                this.maxSpeedKmh = 180; // Realistic street racing top speed in units
+                this.currentMaxSpeed = 0.8;
                 this.generateCatalog();
                 this.initThree();
                 this.initControls();
@@ -179,17 +180,17 @@
                     const brand = brands[i % brands.length];
                     const model = models[i % models.length] + ` Mk.${i}`;
                     const price = 15000 + (i * 3500);
-                    const topSpeed = 1.3 + (i * 0.005);
+                    const topSpeed = 0.8 + (i * 0.003);
                     this.catalog.push({ id: i, name: `${brand} ${model}`, price, topSpeed });
                 }
             }
 
             initThree() {
                 this.scene = new THREE.Scene();
-                this.scene.background = new THREE.Color(0x0a0a1a);
-                this.scene.fog = new THREE.FogExp2(0x0a0a1a, 0.008);
+                this.scene.background = new THREE.Color(0x04040c);
+                this.scene.fog = new THREE.FogExp2(0x04040c, 0.006);
 
-                this.camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+                this.camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 1200);
                 this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
                 this.renderer.setSize(window.innerWidth, window.innerHeight);
                 this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -197,87 +198,98 @@
                 this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
                 document.body.appendChild(this.renderer.domElement);
 
-                // Brightened AAA Lighting
-                const ambientLight = new THREE.AmbientLight(0x333355, 2.5);
+                // Lighting
+                const ambientLight = new THREE.AmbientLight(0x222244, 2.0);
                 this.scene.add(ambientLight);
 
-                const overheadLight = new THREE.DirectionalLight(0xffffff, 2.0);
-                overheadLight.position.set(20, 50, 20);
+                const overheadLight = new THREE.DirectionalLight(0x5588ff, 2.5);
+                overheadLight.position.set(30, 60, 30);
                 overheadLight.castShadow = true;
                 this.scene.add(overheadLight);
 
-                // Neon Streetlights & Buildings
-                for (let i = -350; i <= 350; i += 35) {
-                    const color = i % 70 === 0 ? 0x00ffff : 0xff007f;
+                // NOLA French Quarter Streetlights & Glowing Neon Facades
+                for (let i = -600; i <= 600; i += 40) {
+                    const color = i % 80 === 0 ? 0x00ffff : 0xff007f;
                     const pole = new THREE.Mesh(
                         new THREE.CylinderGeometry(0.15, 0.2, 14, 8),
-                        new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.3, metalness: 0.8 })
+                        new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.3, metalness: 0.8 })
                     );
-                    pole.position.set(15, 7, i);
+                    pole.position.set(11, 7, i);
                     this.scene.add(pole);
 
-                    const bulbLight = new THREE.PointLight(color, 5, 35);
-                    bulbLight.position.set(15, 13, i);
+                    const bulbLight = new THREE.PointLight(color, 4, 30);
+                    bulbLight.position.set(11, 13, i);
                     this.scene.add(bulbLight);
                 }
 
-                // Road & Architecture
+                // Road Setup (Width 22, perfectly scaled for car physics)
                 const road = new THREE.Mesh(
-                    new THREE.PlaneGeometry(30, 900),
-                    new THREE.MeshStandardMaterial({ color: 0x222228, roughness: 0.4, metalness: 0.1 })
+                    new THREE.PlaneGeometry(22, 1400),
+                    new THREE.MeshStandardMaterial({ color: 0x16161c, roughness: 0.5, metalness: 0.1 })
                 );
                 road.rotation.x = -Math.PI / 2;
                 road.receiveShadow = true;
                 this.scene.add(road);
 
-                for (let i = -420; i <= 420; i += 12) {
+                // Center Stripes
+                for (let i = -680; i <= 680; i += 12) {
                     const stripe = new THREE.Mesh(
-                        new THREE.PlaneGeometry(0.5, 6),
+                        new THREE.PlaneGeometry(0.4, 5),
                         new THREE.MeshBasicMaterial({ color: 0x00ffcc })
                     );
                     stripe.rotation.x = -Math.PI / 2;
-                    stripe.position.set(0, 0.05, i);
+                    stripe.position.set(0, 0.04, i);
                     this.scene.add(stripe);
                 }
 
-                // Buildings on sides
-                const bldMat = new THREE.MeshStandardMaterial({ color: 0x1b1b2f, roughness: 0.6 });
-                for (let i = -400; i <= 400; i += 35) {
-                    [-28, 28].forEach(xPos => {
-                        const h = 30 + Math.random() * 40;
-                        const bld = new THREE.Mesh(new THREE.BoxGeometry(16, h, 24), bldMat);
+                // Close-Up New Orleans Skyline & French Quarter Buildings
+                const bldMat = new THREE.MeshStandardMaterial({ color: 0x12121f, roughness: 0.7 });
+                const windowGlowMat = new THREE.MeshBasicMaterial({ color: 0xffaa22 });
+
+                for (let i = -650; i <= 650; i += 28) {
+                    [-18, 18].forEach(xPos => {
+                        const h = 35 + Math.random() * 55;
+                        const bld = new THREE.Mesh(new THREE.BoxGeometry(14, h, 24), bldMat);
                         bld.position.set(xPos, h / 2, i);
+                        bld.castShadow = true;
+                        bld.receiveShadow = true;
                         this.scene.add(bld);
+
+                        // Add glowing windows on building facades facing the street
+                        const windowStrip = new THREE.Mesh(new THREE.PlaneGeometry(8, h * 0.7), windowGlowMat);
+                        windowStrip.position.set(xPos > 0 ? xPos - 7.01 : xPos + 7.01, h / 2, i);
+                        windowStrip.rotation.y = xPos > 0 ? -Math.PI / 2 : Math.PI / 2;
+                        this.scene.add(windowStrip);
                     });
                 }
 
                 // Player Car
                 this.carGroup = new THREE.Group();
                 this.bodyMat = new THREE.MeshStandardMaterial({ color: 0x8800ff, roughness: 0.15, metalness: 0.85 });
-                this.carBodyMesh = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.7, 4.8), this.bodyMat);
-                this.carBodyMesh.position.y = 0.65;
+                this.carBodyMesh = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.65, 4.4), this.bodyMat);
+                this.carBodyMesh.position.y = 0.6;
                 this.carBodyMesh.castShadow = true;
                 this.carGroup.add(this.carBodyMesh);
 
                 const cabin = new THREE.Mesh(
-                    new THREE.BoxGeometry(1.8, 0.6, 2.4),
-                    new THREE.MeshStandardMaterial({ color: 0x111115, roughness: 0.05, metalness: 0.9, transparent: true, opacity: 0.85 })
+                    new THREE.BoxGeometry(1.6, 0.55, 2.2),
+                    new THREE.MeshStandardMaterial({ color: 0x08080c, roughness: 0.05, metalness: 0.9, transparent: true, opacity: 0.9 })
                 );
-                cabin.position.set(0, 1.25, -0.2);
+                cabin.position.set(0, 1.15, -0.2);
                 this.carGroup.add(cabin);
 
-                const wheelGeo = new THREE.CylinderGeometry(0.42, 0.42, 0.45, 24);
+                const wheelGeo = new THREE.CylinderGeometry(0.38, 0.38, 0.4, 24);
                 wheelGeo.rotateZ(Math.PI / 2);
-                const wheelMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.2, metalness: 0.9 });
+                const wheelMat = new THREE.MeshStandardMaterial({ color: 0x151515, roughness: 0.2, metalness: 0.9 });
                 
-                [[-1.2, 0.42, 1.5], [1.2, 0.42, 1.5], [-1.2, 0.42, -1.5], [1.2, 0.42, -1.5]].forEach(pos => {
+                [[-1.1, 0.38, 1.35], [1.1, 0.38, 1.35], [-1.1, 0.38, -1.35], [1.1, 0.38, -1.35]].forEach(pos => {
                     const wheel = new THREE.Mesh(wheelGeo, wheelMat);
                     wheel.position.set(...pos);
                     this.carGroup.add(wheel);
                 });
 
                 this.scene.add(this.carGroup);
-                this.carGroup.position.set(0, 0, 180);
+                this.carGroup.position.set(0, 0, 200);
 
                 this.speed = 0;
                 this.carAngle = 0;
@@ -354,9 +366,9 @@
             animate() {
                 requestAnimationFrame(this.animate);
 
-                const acceleration = 0.018;
-                const deceleration = 0.012;
-                const turnSpeed = 0.038;
+                const acceleration = 0.012;
+                const deceleration = 0.008;
+                const turnSpeed = 0.045;
 
                 if (this.keys.forward) this.speed = Math.min(this.speed + acceleration, this.currentMaxSpeed);
                 else if (this.keys.backward) this.speed = Math.max(this.speed - acceleration, -this.currentMaxSpeed / 3);
@@ -366,9 +378,9 @@
                 }
 
                 let currentTurn = turnSpeed;
-                if (this.keys.drift) currentTurn *= 1.7;
+                if (this.keys.drift) currentTurn *= 1.6;
 
-                if (Math.abs(this.speed) > 0.05) {
+                if (Math.abs(this.speed) > 0.03) {
                     if (this.keys.left) { this.carAngle += currentTurn * Math.sign(this.speed); this.carGroup.rotation.y = this.carAngle; }
                     if (this.keys.right) { this.carAngle -= currentTurn * Math.sign(this.speed); this.carGroup.rotation.y = this.carAngle; }
                 }
@@ -376,26 +388,11 @@
                 this.carGroup.position.x += Math.sin(this.carAngle) * this.speed;
                 this.carGroup.position.z += Math.cos(this.carAngle) * this.speed;
 
-                if (this.carGroup.position.z < -400) this.carGroup.position.z = 400;
-                if (this.carGroup.position.z > 400) this.carGroup.position.z = -400;
-                this.carGroup.position.x = Math.max(Math.min(this.carGroup.position.x, 13), -13);
+                // Infinite road looping
+                if (this.carGroup.position.z < -600) this.carGroup.position.z = 600;
+                if (this.carGroup.position.z > 600) this.carGroup.position.z = -600;
+                this.carGroup.position.x = Math.max(Math.min(this.carGroup.position.x, 9.5), -9.5);
 
-                // Camera follow
-                const targetX = this.carGroup.position.x - Math.sin(this.carAngle) * 13;
-                const targetZ = this.carGroup.position.z - Math.cos(this.carAngle) * 13;
-                this.camera.position.x += (targetX - this.camera.position.x) * 0.12;
-                this.camera.position.z += (targetZ - this.camera.position.z) * 0.12;
-                this.camera.position.y = this.carGroup.position.y + 4.5;
-                this.camera.lookAt(this.carGroup.position.x, this.carGroup.position.y + 1, this.carGroup.position.z - 4);
-
-                document.getElementById('speedometer').innerText = `SPEED: ${Math.round(Math.abs(this.speed) * 110)} MPH`;
-
-                this.renderer.render(this.scene, this.camera);
-            }
-        }
-
-        const game = new NolaStreetRacerGame();
-        window.game = game;
-    </script>
-</body>
-</html>
+                // Cinematic Chase Camera
+                const targetX = this.carGroup.position.x - Math.sin(this.carAngle) * 11;
+                const target
