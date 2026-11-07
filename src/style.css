@@ -955,3 +955,264 @@ body.touch .speedometer b {
     font-size: 7px;
   }
 }
+/* Nightline upgrade: north-up radar, cockpit controls and bounded touch targets. */
+.bottom-left {
+  top: 145px;
+  right: 28px;
+  left: auto;
+  bottom: auto;
+  width: 245px;
+}
+.status-bars {
+  margin-top: 10px;
+}
+.radar-coordinates {
+  font: 8px monospace;
+  color: #72baaf;
+  margin: 6px 0;
+}
+body.map-expanded .bottom-left {
+  width: min(650px, 85vw);
+  top: 140px;
+  right: 25px;
+  left: auto;
+  bottom: auto;
+}
+.top-actions {
+  max-width: calc(100vw - 50px);
+  flex-wrap: wrap;
+}
+body.touch .bottom-left {
+  width: 200px;
+}
+#joystick {
+  width: 100px;
+  height: 100px;
+  border: 1px solid #60e9d46a;
+  border-radius: 50%;
+  background: #091c2a80;
+  position: relative;
+  touch-action: none;
+  pointer-events: auto;
+}
+#joystick-knob {
+  position: absolute;
+  width: 38px;
+  height: 38px;
+  left: 30px;
+  top: 30px;
+  border-radius: 50%;
+  background: #70f3da65;
+  border: 1px solid #b5ffeea0;
+  pointer-events: none;
+}
+.steering-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+}
+.file-label {
+  display: block;
+  font-size: 11px;
+  color: var(--cyan);
+  margin: 20px 0;
+}
+#music-files {
+  display: block;
+  margin-top: 12px;
+  max-width: 100%;
+  font-size: 11px;
+}
+#music-player {
+  width: 100%;
+  margin: 15px 0;
+}
+#playlist {
+  padding: 0;
+  list-style: none;
+  max-height: 180px;
+  overflow: auto;
+}
+#playlist button {
+  text-align: left;
+  width: 100%;
+  margin: 3px 0;
+  font-size: 12px;
+}
+#playlist button.selected {
+  color: var(--cyan);
+  border-color: var(--cyan);
+}
+.music-volume {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  font-size: 11px;
+}
+#music-status {
+  font-size: 11px;
+  color: var(--gold);
+}
+body.cockpit .speedometer {
+  opacity: 0.65;
+}
+@media (max-width: 900px) {
+  .mission-hud {
+    top: 175px;
+  }
+  .bottom-left {
+    top: 175px;
+    right: 18px;
+    width: 200px;
+  }
+  .bottom-center {
+    bottom: 24px;
+  }
+}
+@media (max-width: 600px) {
+  .top-actions {
+    max-width: 96vw;
+    left: 12px;
+    gap: 4px;
+  }
+  .top-actions button {
+    padding: 8px 6px;
+    font-size: 7px;
+  }
+  .mission-hud {
+    left: 12px;
+    top: 174px;
+    width: 185px;
+  }
+  .mission-hud p:not(.eyebrow) {
+    font-size: 8px;
+  }
+  .bottom-left,
+  body.touch .bottom-left {
+    width: 155px;
+    top: 174px;
+    right: 12px;
+    left: auto;
+    bottom: auto;
+  }
+  .map-legend {
+    font-size: 4px;
+    flex-wrap: wrap;
+  }
+  .radar-coordinates {
+    font-size: 6px;
+  }
+  #joystick {
+    width: 84px;
+    height: 84px;
+  }
+  #joystick-knob {
+    left: 22px;
+    top: 22px;
+  }
+  body.touch #touch {
+    bottom: 120px;
+  }
+  body.touch .bottom-center {
+    bottom: 28px;
+    right: 155px;
+  }
+  #touch button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  body.touch .touch-pedals {
+    max-width: 110px;
+  }
+  body.map-expanded .bottom-left {
+    width: 92vw;
+    right: 4vw;
+    top: 174px;
+  }
+}
+@media (max-height: 550px) {
+  .mission-hud {
+    top: 145px;
+    width: 220px;
+  }
+  .bottom-left,
+  body.touch .bottom-left {
+    top: 145px;
+    width: 150px;
+  }
+  .map-legend {
+    display: none;
+  }
+  body.touch #touch {
+    bottom: 50px;
+  }
+  #joystick {
+    width: 70px;
+    height: 70px;
+  }
+  #joystick-knob {
+    left: 15px;
+    top: 15px;
+  }
+  .bottom-center,
+  body.touch .bottom-center {
+    bottom: 15px;
+    left: 40%;
+    right: auto;
+  }
+  .speedometer b {
+    font-size: 45px;
+  }
+}
+#heat {
+  display: block;
+  margin-left: auto;
+  padding: 6px 0;
+  border: 0;
+  pointer-events: auto;
+}
+#heat {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+.wanted-star {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  clip-path: polygon(
+    50% 0%,
+    61% 35%,
+    98% 35%,
+    68% 57%,
+    79% 95%,
+    50% 72%,
+    21% 95%,
+    32% 57%,
+    2% 35%,
+    39% 35%
+  );
+  background: #5a5969;
+}
+.wanted-star.active {
+  background: #ff6376;
+  filter: drop-shadow(0 0 5px #ff3355);
+}
+@media (max-width: 600px) {
+  .bottom-center,
+  body.touch .bottom-center {
+    bottom: 18px;
+    left: 14px;
+    right: auto;
+    transform: none;
+  }
+  .abilities button {
+    font-size: 6px;
+    padding: 6px;
+  }
+  .wanted-star {
+    width: 12px;
+    height: 12px;
+  }
+}

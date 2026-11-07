@@ -1,4 +1,22 @@
 import "./style.css";
+import {
+  createLighting,
+  createSmoke,
+  createPedestrians,
+} from "./atmosphere.js";
+import { createCockpit } from "./cockpit.js";
+import { createDrivingSound } from "./sound.js";
+import { setupPhone } from "./phone.js";
+import {
+  createCollisionQuery,
+  vehicleBounds,
+  advanceHeat,
+  interceptorCount,
+  pursuitSpawn,
+  joystickAxis,
+  SAFEHOUSES,
+  BOSSES,
+} from "./dynamics.js";
 import * as THREE from "three";
 import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
@@ -25,6 +43,13 @@ import {
   loadSave,
 } from "./simulation.js";
 const $ = (id) => document.getElementById(id);
+const wantedStars = Array.from({ length: 5 }, () => {
+  const s = document.createElement("span");
+  s.className = "wanted-star";
+  s.setAttribute("aria-hidden", "true");
+  return s;
+});
+$("heat").replaceChildren(...wantedStars);
 let renderer;
 try {
   renderer = new THREE.WebGLRenderer({
@@ -37,7 +62,8 @@ try {
     "<h1>WebGL unavailable</h1><p>This prototype needs a browser with WebGL2 and hardware acceleration enabled.</p>";
   throw new Error("WebGL2 is required");
 }
-renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
+const mobile = matchMedia("(pointer: coarse)").matches || innerWidth < 600;
+renderer.setPixelRatio(Math.min(devicePixelRatio, mobile ? 1 : 1.5));
 renderer.setSize(innerWidth, innerHeight);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.15;
@@ -48,6 +74,12 @@ const camera = new THREE.PerspectiveCamera(
   1800,
 );
 const world = createWorld();
+const pedestrians = createPedestrians(scene);
+const lighting = createLighting(renderer, scene, camera, mobile);
+const smoke = createSmoke(scene, mobile);
+const cockpit = createCockpit(scene, camera, renderer, mobile);
+const collisionQuery = createCollisionQuery(boxes);
+const phone = setupPhone($);
 const composer = new EffectComposer(renderer);
 composer.addPass(new RenderPass(scene, camera));
 const bloom = new UnrealBloomPass(
@@ -58,7 +90,10 @@ const bloom = new UnrealBloomPass(
 );
 composer.addPass(bloom);
 composer.addPass(new OutputPass());
-let highFX = true;
+let highFX = !mobile;
+world.reflection.visible = highFX;
+$("quality").textContent = highFX ? "FX HIGH" : "FX LOW";
+$("quality").setAttribute("aria-pressed", String(highFX));
 let save;
 try {
   save = loadSave(localStorage.getItem("crescent-city-save"));
@@ -75,9 +110,15 @@ function persist() {
 let car = initialCar(),
   player = createCar(CLASSES[save.vehicle], COLORS[save.color], save.rims);
 scene.add(player);
+lighting.register(player);
+player.userData.headlight.castShadow = highFX;
+player.userData.headlight.shadow.mapSize.set(
+  mobile ? 512 : 1024,
+  mobile ? 512 : 1024,
+);
 let started = false,
   heat = 0,
-  heatTimer = 0,
+  heatState = { heat: 0, evidence: 0, escape: 0 },
   elapsed = 0,
   storm = 0.25,
   manualWaypoint = null;
@@ -123,10 +164,22 @@ function refreshCar() {
   disposeCar(player);
   player = createCar(CLASSES[save.vehicle], COLORS[save.color], save.rims);
   scene.add(player);
+  lighting.register(player);
+  player.userData.headlight.castShadow = highFX;
+  player.userData.headlight.shadow.mapSize.set(
+    mobile ? 512 : 1024,
+    mobile ? 512 : 1024,
+  );
   car.speed = car.vx = car.vz = 0;
   persist();
 }
+let joystickSteer = 0,
+  stickPointer = null;
 function clearInput() {
+  joystickSteer = 0;
+  stickPointer = null;
+  if ($("joystick-knob")) $("joystick-knob").style.transform = "";
+  $("joystick").setAttribute("aria-valuenow", "0");
   keys.clear();
   document
     .querySelectorAll("#touch .pressed")
@@ -152,10 +205,29 @@ $("pause").onclick = $("brand").onclick = (e) => {
   e.preventDefault();
   openPanel("pause-menu");
 };
+$("heat").onclick = () =>
+  toast(
+    heat
+      ? `WANTED ${heat}/5 · ${agents.filter((a) => a.police && !a.patrol).length} interceptors. Stay over 180m from police to shed a star.`
+      : "No active warrant. Speeding or drifting near patrols attracts NOPD attention.",
+  );
+$("phone-button").onclick = () => openPanel("phone");
+$("exit-driving").onclick = () => openPanel("pause-menu");
+function toggleCamera() {
+  const enabled = cockpit.toggle();
+  document.body.classList.toggle("cockpit", enabled);
+  $("camera-toggle").setAttribute("aria-pressed", String(enabled));
+  $("camera-toggle").textContent = enabled ? "CHASE / C" : "COCKPIT / C";
+  player.visible = true;
+  player.userData.bodyGroup.visible = !enabled;
+}
+$("camera-toggle").onclick = toggleCamera;
 $("map-button").onclick = () => document.body.classList.toggle("map-expanded");
 $("quality").onclick = () => {
   highFX = !highFX;
   world.reflection.visible = highFX;
+  lighting.setQuality(highFX);
+  player.userData.headlight.castShadow = highFX;
   renderer.setPixelRatio(highFX ? Math.min(devicePixelRatio, 1.5) : 1);
   renderer.setSize(innerWidth, innerHeight);
   composer.setPixelRatio(renderer.getPixelRatio());
@@ -177,6 +249,7 @@ function recover(penalty = false) {
   car.x = safePosition.x;
   car.z = safePosition.z;
   car.speed = car.vx = car.vz = 0;
+  heatState.evidence = 0;
   car.health = penalty
     ? Math.max(15, car.health - 15)
     : Math.max(30, car.health);
@@ -208,7 +281,13 @@ addEventListener("keydown", (e) => {
     else openPanel("garage");
   }
   if (key === "r") openPanel("race-board");
-  if (key === "m") document.body.classList.toggle("map-expanded");
+  if (key === "m") openPanel("phone");
+  if (key === "v") {
+    e.preventDefault();
+    document.body.classList.toggle("map-expanded");
+  }
+  if (key === "c") toggleCamera();
+  if (key === "f") openPanel("pause-menu");
   if (key === "p" || key === "escape") openPanel("pause-menu");
   if (key === "t") recover();
   if (key === "h" && save.stance === 2) hop = 1;
@@ -238,6 +317,45 @@ for (const b of document.querySelectorAll("[data-key]")) {
   };
   b.onpointerup = b.onpointercancel = b.onlostpointercapture = release;
 }
+const stick = $("joystick");
+function moveStick(e) {
+  if (e.pointerId !== stickPointer) return;
+  const r = stick.getBoundingClientRect();
+  joystickSteer = joystickAxis(
+    e.clientX - r.left - r.width / 2,
+    r.width * 0.36,
+  );
+  $("joystick-knob").style.transform =
+    `translateX(${joystickSteer * r.width * 0.28}px)`;
+  stick.setAttribute("aria-valuenow", String(Math.round(joystickSteer * 100)));
+}
+stick.onpointerdown = (e) => {
+  e.preventDefault();
+  stickPointer = e.pointerId;
+  stick.setPointerCapture(e.pointerId);
+  moveStick(e);
+};
+stick.onpointermove = moveStick;
+const resetStick = () => {
+  stickPointer = null;
+  joystickSteer = 0;
+  $("joystick-knob").style.transform = "";
+  stick.setAttribute("aria-valuenow", "0");
+};
+stick.onpointerup =
+  stick.onpointercancel =
+  stick.onlostpointercapture =
+    resetStick;
+stick.onkeydown = (e) => {
+  if (["ArrowLeft", "ArrowRight"].includes(e.key)) {
+    e.preventDefault();
+    e.stopPropagation();
+    joystickSteer = e.key === "ArrowLeft" ? -1 : 1;
+    stick.setAttribute("aria-valuenow", String(joystickSteer * 100));
+  }
+};
+stick.onkeyup = resetStick;
+stick.onblur = resetStick;
 for (const b of document.querySelectorAll("[data-ability]"))
   b.onclick = () => ability(b.dataset.ability);
 function ability(name) {
@@ -349,7 +467,7 @@ $("garage-button").onclick = () =>
     : openPanel("garage");
 // Traffic follows intersections; police choose grid nodes toward the player.
 const agents = [];
-function makeAgent(x, z, police = false) {
+function makeAgent(x, z, police = false, patrol = false) {
   const mesh = createCar(
     CLASSES[police ? 0 : Math.floor(random() * 3)],
     police ? "#162537" : COLORS[Math.floor(random() * COLORS.length)],
@@ -365,6 +483,8 @@ function makeAgent(x, z, police = false) {
     tz: z,
     heading: 0,
     police,
+    patrol,
+    bounds: new THREE.Box3(),
     stunned: 0,
     hitTimer: 0,
     speed: police ? 31 : 12 + random() * 8,
@@ -395,7 +515,8 @@ function makeAgent(x, z, police = false) {
     a.bar = bar;
   }
   mesh.position.set(x, 0, z);
-  mesh.visible = !police;
+  mesh.visible = !police || patrol;
+  lighting.register(mesh);
   scene.add(mesh);
   agents.push(a);
   return a;
@@ -405,13 +526,22 @@ for (let i = 0; i < 14; i++)
     (Math.floor(random() * 8) - 4) * 100,
     (Math.floor(random() * 8) - 4) * 100,
   );
-for (const [x, z] of [
-  [-200, -200],
-  [300, 100],
-  [-300, 300],
-  [400, -300],
-])
-  makeAgent(x, z, true);
+makeAgent(0, -100, true, true);
+makeAgent(-200, 100, true, true);
+function syncInterceptors() {
+  const interceptors = agents.filter((a) => a.police && !a.patrol),
+    wanted = interceptorCount(heat);
+  while (interceptors.length > wanted) {
+    const a = interceptors.pop();
+    agents.splice(agents.indexOf(a), 1);
+    disposeCar(a.mesh);
+  }
+  while (interceptors.length < wanted) {
+    const p = pursuitSpawn(car, interceptors.length);
+    const a = makeAgent(p.x, p.z, true);
+    interceptors.push(a);
+  }
+}
 let rival = null;
 function chooseNode(a, target) {
   if (target) {
@@ -435,10 +565,11 @@ function chooseNode(a, target) {
   }
 }
 function updateAgents(dt) {
+  let shadowCars = 0;
   for (const a of agents) {
     a.stunned = Math.max(0, a.stunned - dt);
     a.hitTimer = Math.max(0, a.hitTimer - dt);
-    a.mesh.visible = !a.police || heat > 0;
+    a.mesh.visible = !a.police || a.patrol || heat > 0;
     if (!a.mesh.visible) continue;
     if (a === rival && !mission) continue;
     const target =
@@ -447,10 +578,12 @@ function updateAgents(dt) {
             x: mission.checkpoints[missionRivalStage][0],
             z: mission.checkpoints[missionRivalStage][1],
           }
-        : a.police
+        : a.police && heat > 0
           ? { x: clamp(car.x, -400, 400), z: clamp(car.z, -400, 400) }
           : null;
     if (Math.hypot(a.tx - a.x, a.tz - a.z) < 1) chooseNode(a, target);
+    const oldX = a.x,
+      oldZ = a.z;
     const dx = a.tx - a.x,
       dz = a.tz - a.z,
       length = Math.hypot(dx, dz);
@@ -471,17 +604,43 @@ function updateAgents(dt) {
       a.bar.children[0].visible = Math.sin(elapsed * 17) > 0;
       a.bar.children[1].visible = !a.bar.children[0].visible;
     }
-    if (
-      Math.hypot(a.mesh.position.x - car.x, a.mesh.position.z - car.z) < 4 &&
-      !a.hitTimer &&
-      a !== rival
-    ) {
-      a.hitTimer = 2;
-      car.speed *= 0.65;
-      car.health = Math.max(0, car.health - (a.police ? 7 : 3));
-      if (!a.police) heat = Math.min(5, heat + 0.4);
-      flash("#eb4166");
+    const dim = a.mesh.userData.dimensions;
+    vehicleBounds(
+      a.mesh.position.x,
+      a.mesh.position.z,
+      a.heading,
+      dim.width,
+      dim.length,
+      a.bounds,
+    );
+    const playerBox = vehicleBounds(
+      car.x,
+      car.z,
+      car.heading,
+      CLASSES[save.vehicle].width,
+      CLASSES[save.vehicle].length,
+    );
+    if (a.bounds.intersectsBox(playerBox)) {
+      // Agents cannot move through the player between physics substeps.
+      a.x = oldX;
+      a.z = oldZ;
+      a.mesh.position.set(oldX + (a.police || a === rival ? 0 : 3), 0, oldZ);
+      car.speed *= 0.45;
+      car.vx *= 0.4;
+      car.vz *= 0.4;
+      if (!a.hitTimer) {
+        a.hitTimer = 2;
+        car.health = Math.max(0, car.health - (a.police ? 7 : 3));
+        if (a.police) heat = Math.min(5, Math.max(1, heat + 1));
+        flash("#eb4166");
+      }
     }
+    // At most two nearby traffic headlights cast spot shadows in high FX.
+    const lamp = a.mesh.userData.headlight;
+    lamp.visible =
+      highFX && Math.hypot(a.x - car.x, a.z - car.z) < 65 && shadowCars++ < 2;
+    lamp.castShadow = lamp.visible;
+    lamp.shadow.mapSize.set(512, 512);
     if (
       a === rival &&
       reachedCheckpoint(a, mission.checkpoints[missionRivalStage])
@@ -542,6 +701,7 @@ for (const x of [-6, 6]) {
   m.userData.glow.visible = false;
   m.position.set(x, 0, 0);
   m.rotation.y = Math.PI / 2;
+  lighting.register(m);
   roadblock.add(m);
 }
 roadblock.position.set(-300, 0, -300);
@@ -702,33 +862,15 @@ function updateWeather(dt) {
   $("weather").textContent =
     `00:${String(42 + (Math.floor(elapsed / 60) % 18)).padStart(2, "0")} AM / ${storm > 0.5 ? "TROPICAL DOWNPOUR" : "LIGHT RAIN"}`;
 }
-// Original procedural audio only: low engine growl + optional synthesized bounce beat.
+// User-gesture Web Audio initialization; soundtrack files use a separate volume control.
 let audio = null,
-  engineOsc,
-  engineGain,
-  bassOsc,
+  drivingSound,
   beatClock = 0,
   beatIndex = 0;
 function initAudio() {
   if (audio) return;
   audio = new (window.AudioContext || window.webkitAudioContext)();
-  const filter = audio.createBiquadFilter();
-  filter.type = "lowpass";
-  filter.frequency.value = 380;
-  engineGain = audio.createGain();
-  engineGain.gain.value = 0;
-  filter.connect(engineGain);
-  engineGain.connect(audio.destination);
-  engineOsc = audio.createOscillator();
-  engineOsc.type = "sawtooth";
-  engineOsc.frequency.value = 40;
-  engineOsc.connect(filter);
-  engineOsc.start();
-  bassOsc = audio.createOscillator();
-  bassOsc.type = "triangle";
-  bassOsc.frequency.value = 41;
-  bassOsc.connect(filter);
-  bassOsc.start();
+  drivingSound = createDrivingSound(audio);
 }
 $("audio").onclick = async () => {
   try {
@@ -737,8 +879,6 @@ $("audio").onclick = async () => {
     audioEnabled = !audioEnabled;
     $("audio").textContent = audioEnabled ? "SOUND ON" : "SOUND OFF";
     $("audio").setAttribute("aria-pressed", String(audioEnabled));
-    if (!audioEnabled)
-      engineGain.gain.setTargetAtTime(0, audio.currentTime, 0.03);
   } catch {
     toast("Audio is not supported in this browser.");
   }
@@ -766,22 +906,13 @@ function drum(frequency, duration, volume, type = "sine") {
 function updateAudio(dt) {
   if (!audio) return;
   const on = audioEnabled && !isPaused();
-  engineGain.gain.setTargetAtTime(
-    on ? 0.025 + Math.abs(car.speed) / 5500 : 0,
-    audio.currentTime,
-    0.07,
+  const nearestCop = Math.min(
+    ...agents
+      .filter((a) => a.police && a.mesh.visible)
+      .map((a) => Math.hypot(a.x - car.x, a.z - car.z)),
   );
+  drivingSound.update({ on, car, input, heat, nearestCop, time: elapsed });
   if (!on) return;
-  engineOsc.frequency.setTargetAtTime(
-    35 + Math.abs(car.speed) * 2.2 + Math.abs(input.throttle) * 12,
-    audio.currentTime,
-    0.08,
-  );
-  bassOsc.frequency.setTargetAtTime(
-    24 + Math.abs(car.speed) * 0.65,
-    audio.currentTime,
-    0.1,
-  );
   beatClock += dt;
   if (beatClock > 60 / 106 / 2) {
     beatClock = 0;
@@ -842,12 +973,27 @@ function drawMap() {
   ctx.fillText("I-10", mx(820), mz(-450));
   ctx.fillText("WAREHOUSE", mx(20), mz(350));
   ctx.fillText("N ↑", 295, 17);
+  ctx.fillText("TREMÉ", mx(-330), mz(280));
+  ctx.fillText("ST CLAUDE", mx(-350), mz(-270));
+  ctx.fillText("NOLA EAST", mx(120), mz(-330));
+  ctx.fillText("BAYOU", mx(-620), mz(-400));
   const dot = (x, z, color, radius) => {
     ctx.fillStyle = color;
     ctx.beginPath();
     ctx.arc(mx(x), mz(z), radius, 0, Math.PI * 2);
     ctx.fill();
   };
+  for (const h of SAFEHOUSES) {
+    ctx.fillStyle = "#60edb5";
+    ctx.fillRect(mx(h.x) - 2, mz(h.z) - 2, 4, 4);
+  }
+  for (const b of BOSSES) {
+    dot(b.x, b.z, b.color, 3);
+    ctx.fillStyle = b.color;
+    ctx.fillText(b.name, mx(b.x) + 4, mz(b.z) - 3);
+  }
+  $("radar-coordinates").textContent =
+    `X ${car.x.toFixed(0)} / Z ${car.z.toFixed(0)} · 8 SECTORS`;
   if (mission) {
     ctx.strokeStyle = mission.color + "66";
     ctx.lineWidth = 1;
@@ -867,7 +1013,7 @@ function drawMap() {
     dot(...manualWaypoint, "#b994ff", 4);
   }
   for (const a of agents)
-    if (a.police && heat > 0)
+    if (a.police && a.mesh.visible)
       dot(a.x, a.z, a.stunned ? "#536b80" : "#ff4d72", 2);
   if (rival) dot(rival.x, rival.z, "#df9fff", 3);
   ctx.save();
@@ -901,13 +1047,32 @@ function updateGameplay(dt) {
       (keys.has("s") || keys.has("arrowdown") ? 1 : 0),
     steer:
       (keys.has("d") || keys.has("arrowright") ? 1 : 0) -
-      (keys.has("a") || keys.has("arrowleft") ? 1 : 0),
+      (keys.has("a") || keys.has("arrowleft") ? 1 : 0) +
+      joystickSteer,
     boost: keys.has("shift"),
     handbrake: keys.has(" "),
     brake: keys.has("s") && car.speed > 2,
   };
+  input.steer = clamp(input.steer, -1, 1);
   const simDt = active.zone > 0 ? dt * 0.45 : dt;
   const flooded = storm > 0.5 && car.z < -150 && Math.abs(car.x) < 450;
+  const movingBounds = agents
+    .filter((a) => a.mesh.visible)
+    .map((a) => {
+      const dim = a.mesh.userData.dimensions;
+      return vehicleBounds(
+        a.mesh.position.x,
+        a.mesh.position.z,
+        a.heading,
+        dim.width,
+        dim.length,
+        a.bounds,
+      );
+    });
+  if (roadblock.visible)
+    for (const x of [-306, -294])
+      movingBounds.push(vehicleBounds(x, -300, Math.PI / 2, 2.4, 5.5));
+  collisionQuery.setTraffic(movingBounds);
   for (let i = 0, count = Math.ceil(simDt * 120); i < count; i++) {
     const result = stepCar(
       car,
@@ -915,7 +1080,7 @@ function updateGameplay(dt) {
       CLASSES[save.vehicle],
       simDt / count,
       storm,
-      boxes,
+      (x, z, h, w, l) => collisionQuery.intersects(x, z, h, w, l),
       save.upgrades,
     );
     player.userData.flames.visible = result.boost;
@@ -923,21 +1088,26 @@ function updateGameplay(dt) {
   }
   if (flooded && save.vehicle !== 2 && Math.abs(car.speed) > 25)
     car.speed *= 1 - dt * 0.15;
-  if (Math.abs(car.speed) > 36) {
-    heatTimer += dt;
-    if (heatTimer > 20) {
-      heat = Math.min(5, heat + 1);
-      heatTimer = 0;
-      toast("HEAT RISING · Interceptors are looking for you.");
-    }
-  }
   const nearestCop = Math.min(
     ...agents
-      .filter((a) => a.police)
+      .filter((a) => a.police && a.mesh.visible)
       .map((a) => Math.hypot(a.x - car.x, a.z - car.z)),
   );
-  if (missionIndex !== 1 && nearestCop > 180)
-    heat = Math.max(0, heat - dt * 0.07);
+  const previousHeat = heat;
+  heatState = advanceHeat(
+    { ...heatState, heat },
+    {
+      speed: car.speed,
+      drifting: input.handbrake,
+      nearestCop,
+      force: missionIndex === 1 ? 4 : 0,
+    },
+    dt,
+  );
+  heat = heatState.heat;
+  if (heat > previousHeat)
+    toast(`NOPD / WANTED ${heat} · Lose visual contact to escape.`);
+  syncInterceptors();
   updateAgents(simDt);
   spikeCooldown = Math.max(0, spikeCooldown - dt);
   if (
@@ -960,6 +1130,7 @@ function updateGameplay(dt) {
     safePosition = { x: 0, z: 20 };
     car.health = 50;
     heat = 0;
+    heatState = { heat: 0, evidence: 0, escape: 0 };
     recover();
   }
   // River is a physical hazard, not an invisible map boundary.
@@ -1030,6 +1201,9 @@ function updateGameplay(dt) {
     shockwave.scale.setScalar(radius);
     shockwave.material.opacity = active.roar / 1.2;
   }
+  smoke.update(simDt, car, input, player.userData.flames.visible);
+  pedestrians.update(simDt, car);
+  world.setWet(storm, car);
   updateWeather(dt);
   $("district").textContent = getDistrict(car.x, car.z);
   $("cash").textContent = `$${save.cash.toLocaleString()}`;
@@ -1047,9 +1221,9 @@ function updateGameplay(dt) {
   $("health").value = car.health;
   $("health-value").textContent = `${Math.round(car.health)}%`;
   $("nitro").value = car.nitro;
-  $("heat").textContent = Array.from({ length: 5 }, (_, i) =>
-    i < Math.floor(heat) ? "●" : "○",
-  ).join(" ");
+  wantedStars.forEach((star, i) => star.classList.toggle("active", i < heat));
+  $("heat").dataset.level = String(heat);
+  $("heat").setAttribute("aria-label", `Wanted level ${heat} of 5. Details`);
   $("zone-status").textContent =
     active.zone > 0
       ? "ZONE / TIME DILATION"
@@ -1060,9 +1234,20 @@ function updateGameplay(dt) {
           : save.rep >= 1050
             ? "CRESCENT CITY ROYALTY"
             : "EASTBANK UNDERGROUND";
+  const safe = SAFEHOUSES.find(
+    (h) => Math.hypot(h.x - car.x, h.z - car.z) < 18,
+  );
+  if (safe && !mission && heat === 0 && Math.abs(car.speed) < 1) {
+    car.health = Math.min(100, car.health + dt * 5);
+    car.nitro = Math.min(100, car.nitro + dt * 15);
+  }
   drawMap();
 }
 function updateCamera(dt) {
+  cockpit.update(car, input);
+  player.visible = true;
+  player.userData.bodyGroup.visible = !cockpit.enabled;
+  if (cockpit.enabled) return;
   const speedFactor = Math.abs(car.speed) / 80;
   cameraTarget.set(
     car.x - Math.sin(car.heading) * (11 + speedFactor * 6),
@@ -1101,7 +1286,14 @@ function animate() {
     updateGameplay(dt);
     updateCamera(dt);
   }
+  phone.pause(
+    !started ||
+      Boolean(document.querySelector("dialog[open]:not(#phone)")) ||
+      document.hidden,
+  );
   updateAudio(dt);
+  lighting.update(car);
+  if (started) cockpit.renderMirror(dt, car, player, world.reflection);
   if (highFX) composer.render();
   else renderer.render(scene, camera);
 }
@@ -1110,6 +1302,7 @@ addEventListener("resize", () => {
   camera.updateProjectionMatrix();
   renderer.setSize(innerWidth, innerHeight);
   composer.setSize(innerWidth, innerHeight);
+  lighting.resize();
 });
 $("world").addEventListener("webglcontextlost", (e) => {
   e.preventDefault();
