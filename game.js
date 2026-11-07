@@ -4,7 +4,7 @@ class NolaOpenWorldGame {
         this.currentMaxSpeed = 0.8;
         this.isWalking = false;
         this.walkPos = { x: 0, z: 200 };
-        this.timeOfDay = 0; // 0 to 24 hours
+        this.timeOfDay = 0; // Slowed down day-to-night progression
 
         this.generateCatalog();
         this.generateTerritories();
@@ -55,6 +55,7 @@ class NolaOpenWorldGame {
         this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
         this.renderer.setSize(window.innerWidth, window.innerHeight);
         this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        this.renderer.shadowMap.enabled = true;
         document.body.appendChild(this.renderer.domElement);
 
         // Lighting & Day-to-Night Cycle lights
@@ -63,6 +64,7 @@ class NolaOpenWorldGame {
 
         this.sunLight = new THREE.DirectionalLight(0xffffff, 2.0);
         this.sunLight.position.set(40, 80, 40);
+        this.sunLight.castShadow = true;
         this.scene.add(this.sunLight);
 
         // --- INTERSECTING & PARALLEL STREET GRID ---
@@ -70,31 +72,49 @@ class NolaOpenWorldGame {
         
         const roadNS1 = new THREE.Mesh(new THREE.PlaneGeometry(24, 2500), roadMat);
         roadNS1.rotation.x = -Math.PI / 2;
+        roadNS1.receiveShadow = true;
         this.scene.add(roadNS1);
 
         const roadNS2 = new THREE.Mesh(new THREE.PlaneGeometry(24, 2500), roadMat);
         roadNS2.rotation.x = -Math.PI / 2;
         roadNS2.position.set(60, 0, 0);
+        roadNS2.receiveShadow = true;
         this.scene.add(roadNS2);
 
         for (let zPos = -1000; zPos <= 1000; zPos += 200) {
             const roadEW = new THREE.Mesh(new THREE.PlaneGeometry(140, 20), roadMat);
             roadEW.rotation.x = -Math.PI / 2;
             roadEW.position.set(30, 0.01, zPos);
+            roadEW.receiveShadow = true;
             this.scene.add(roadEW);
         }
 
-        // --- AI TRAFFIC VEHICLES & PEDESTRIANS ---
+        // --- REALISTIC DETAILED CARS (Traffic & Props) ---
         this.trafficCars = [];
-        const trafficColors = [0xff0000, 0x00ff00, 0xffff00, 0xffffff, 0x333333];
-        for (let i = -800; i <= 800; i += 150) {
-            const tCar = new THREE.Mesh(
-                new THREE.BoxGeometry(1.9, 0.6, 4.2),
-                new THREE.MeshStandardMaterial({ color: trafficColors[Math.abs(i) % trafficColors.length], roughness: 0.3, metalness: 0.7 })
+        const trafficColors = [0xcc0000, 0x0066cc, 0xffaa00, 0x222222, 0xeeeeee];
+        for (let i = -800; i <= 800; i += 140) {
+            const carGroup = new THREE.Group();
+            
+            // Detailed body mesh
+            const body = new THREE.Mesh(
+                new THREE.BoxGeometry(2.0, 0.65, 4.4),
+                new THREE.MeshStandardMaterial({ color: trafficColors[Math.abs(i) % trafficColors.length], roughness: 0.2, metalness: 0.8 })
             );
-            tCar.position.set(i % 2 === 0 ? 6 : -6, 0.5, i);
-            this.scene.add(tCar);
-            this.trafficCars.push({ mesh: tCar, speed: 0.3 + (Math.random() * 0.4) });
+            body.position.y = 0.6;
+            body.castShadow = true;
+            carGroup.add(body);
+
+            // Cabin glass
+            const cabin = new THREE.Mesh(
+                new THREE.BoxGeometry(1.6, 0.5, 2.2),
+                new THREE.MeshStandardMaterial({ color: 0x111115, roughness: 0.1, transparent: true, opacity: 0.85 })
+            );
+            cabin.position.set(0, 1.1, -0.2);
+            carGroup.add(cabin);
+
+            carGroup.position.set(i % 2 === 0 ? 6 : -6, 0, i);
+            this.scene.add(carGroup);
+            this.trafficCars.push({ group: carGroup, speed: 0.25 + (Math.random() * 0.3) });
         }
 
         // --- ENTERABLE BUILDINGS ---
@@ -106,6 +126,8 @@ class NolaOpenWorldGame {
             [-35, 95].forEach(xPos => {
                 const bld = new THREE.Mesh(new THREE.BoxGeometry(25, 45, 30), bldMat);
                 bld.position.set(xPos, 22.5, zPos);
+                bld.castShadow = true;
+                bld.receiveShadow = true;
                 this.scene.add(bld);
 
                 const door = new THREE.Mesh(new THREE.BoxGeometry(4, 8, 1), doorMat);
@@ -120,6 +142,7 @@ class NolaOpenWorldGame {
         this.bodyMat = new THREE.MeshStandardMaterial({ color: 0x8800ff, roughness: 0.15, metalness: 0.85 });
         this.carBodyMesh = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.65, 4.4), this.bodyMat);
         this.carBodyMesh.position.y = 0.6;
+        this.carBodyMesh.castShadow = true;
         this.carGroup.add(this.carBodyMesh);
 
         const cabin = new THREE.Mesh(
@@ -297,13 +320,12 @@ class NolaOpenWorldGame {
     animate() {
         requestAnimationFrame(this.animate);
 
-        // Day-to-night cycle progression
-        this.timeOfDay = (this.timeOfDay + 0.05) % 24;
+        // Slowed down day-to-night cycle progression (0.005 instead of 0.05)
+        this.timeOfDay = (this.timeOfDay + 0.005) % 24;
         const hours = Math.floor(this.timeOfDay);
         const mins = Math.floor((this.timeOfDay % 1) * 60);
         document.getElementById('time-status').innerText = `TIME: ${String(hours).padStart(2,'0')}:${String(mins).padStart(2,'0')} (${hours >= 6 && hours < 18 ? 'Day' : 'Night'})`;
         
-        // Dynamic lighting adjustments based on time
         if (hours >= 6 && hours < 18) {
             this.sunLight.intensity = 2.5;
             this.ambientLight.intensity = 2.0;
@@ -314,8 +336,8 @@ class NolaOpenWorldGame {
 
         // Move AI Traffic
         this.trafficCars.forEach(tc => {
-            tc.mesh.position.z += tc.speed;
-            if (tc.mesh.position.z > 1000) tc.mesh.position.z = -1000;
+            tc.group.position.z += tc.speed;
+            if (tc.group.position.z > 1000) tc.group.position.z = -1000;
         });
 
         if (this.isWalking) {
