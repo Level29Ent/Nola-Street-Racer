@@ -72,6 +72,11 @@ export function createCockpit(scene, camera, renderer, mobile) {
       gauge.scale.set(fit, fit, 1);
       gauge.position.x = 0.1 * fit;
       mirror.scale.set(-fit, fit, 1);
+      mirror.position.set(
+        fit < 1 ? -0.17 * fit : 0,
+        fit < 1 ? 0.04 : 0.25,
+        -0.8,
+      );
       wheel.rotation.z = -input.steer * 0.7;
       const mph = Math.round(Math.abs(car.speed) * 2.237);
       if (lastSpeed !== mph) {
